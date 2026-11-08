@@ -152,9 +152,10 @@ body {
 /* ---------- Layout ---------- */
 
 .settings-shell {
-  width: min(680px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 48px 0 72px;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 48px 32px 72px;
 }
 
 header {
@@ -173,12 +174,25 @@ header {
 .eyebrow {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 9px;
   color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.brand-product {
+  color: inherit;
+}
+
+.brand-company {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .settings-brand-mark {
@@ -540,7 +554,7 @@ footer {
 
 @media (max-width: 620px) {
   .settings-shell {
-    padding-top: 28px;
+    padding: 28px 16px 56px;
   }
 
   .card {

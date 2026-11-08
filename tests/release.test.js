@@ -176,6 +176,20 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(chineseReadme, /发布版本的 Base URL 是固定的/);
 });
 
+test("settings page uses the full viewport and shows company branding", () => {
+  const html = read("options.html");
+  const css = read("options.css");
+
+  assert.match(html, /深度云创科科技/);
+  assert.match(css, /\.settings-shell\s*\{[^}]*width:\s*100%;/);
+  assert.match(css, /\.settings-shell\s*\{[^}]*min-height:\s*100vh;/);
+  assert.doesNotMatch(css, /\.settings-shell\s*\{[^}]*max-width:/);
+  assert.doesNotMatch(
+    css,
+    /\.settings-shell\s*\{[^}]*width:\s*min\(680px,\s*calc\(100%\s*-\s*32px\)\)/,
+  );
+});
+
 test("product UI contains no emoji or emoji-like pictographs", () => {
   const productUi = [
     read("sidepanel.html"),
