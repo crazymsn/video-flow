@@ -34,8 +34,13 @@ var YTD_SETTINGS = (() => {
   );
 
   function isBlockedModel(value) {
-    return (
-      typeof value === "string" && BLOCKED_MODEL_KEYS.has(value.trim().toLowerCase())
+    if (typeof value !== "string") return false;
+    const model = value.trim().toLowerCase();
+    return [...BLOCKED_MODEL_KEYS].some(
+      (blocked) =>
+        model === blocked ||
+        model.includes(`/${blocked}`) ||
+        model.startsWith(`${blocked}-`),
     );
   }
   const YOUTUBE_HOST = "www.youtube.com";

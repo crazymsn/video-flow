@@ -106,6 +106,9 @@ test("non-chat models are hidden from the model list", () => {
     assert.equal(settings.normalizeModel(model), "", model);
     assert.equal(settings.normalize({ aiModel: model }).aiModel, "", model);
   }
+  assert.equal(settings.isBlockedModel("provider/chirp-v3-5"), true);
+  assert.equal(settings.isBlockedModel("chirp-v3-5-preview"), true);
+  assert.equal(settings.normalizeModel("provider/chirp-v3-5"), "");
   assert.equal(settings.isBlockedModel("gpt-example"), false);
   assert.equal(settings.isBlockedModel(undefined), false);
 });
