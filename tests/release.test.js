@@ -117,7 +117,7 @@ test("release copy documents current scope without em dashes", () => {
     assert.match(doc, /https:\/\/api\.meding\.site/);
     assert.match(doc, /\/v1\/models/);
     assert.match(doc, /api\.bilibili\.com/);
-    assert.match(doc, /biuworks\/bilibili-digest/);
+    assert.doesNotMatch(doc, /biuworks\/bilibili-digest/);
     assert.doesNotMatch(doc, /platform\.deepseek\.com/i);
     assert.doesNotMatch(doc, /api-docs\.deepseek\.com/i);
     assert.doesNotMatch(doc, /\$0\.007|\$0\.014|32,600/);
@@ -142,37 +142,13 @@ test("release copy documents current scope without em dashes", () => {
   assert.doesNotMatch(optionsPage, /id="provider"/);
   assert.match(optionsPage, /<select\b[^>]*id="aiModel"/);
   assert.match(optionsPage, /<input[^>]*id="aiBaseUrl"[^>]*\sreadonly\s/);
-  const detailsTag = optionsPage.match(
-    /<details\b[^>]*class="card customization-card"[^>]*>/,
-  );
-  assert.ok(detailsTag, "Expected a native Local remix details disclosure");
-  assert.doesNotMatch(detailsTag[0], /\sopen(?:\s|=|>)/i);
-  assert.match(
-    optionsPage,
-    /<summary class="customization-summary">[\s\S]*Want to use another AI model\?[\s\S]*Edit and copy a safe prompt for your coding agent[\s\S]*<\/summary>/,
-  );
-  assert.match(
-    optionsPage,
-    /class="customization-steps"[\s\S]*Open the extracted Video Flow project folder in your coding[\s\S]*Replace \[PROVIDER\] and \[MODEL\][\s\S]*Never include API keys[\s\S]*<\/ol>/,
-  );
-  assert.match(
-    optionsPage,
-    /class="prompt-reminder"[\s\S]*Before copying, replace \[PROVIDER\] and \[MODEL\]/,
-  );
-  assert.doesNotMatch(optionsPage, /~\/Documents\/video-flow/);
-  assert.doesNotMatch(optionsPage, /%USERPROFILE%\\Documents\\video-flow/);
-  assert.match(optionsPage, /id="copyCustomizationPromptBtn"/);
-  assert.match(optionsStyles, /\.customization-summary:hover\s*\{/);
-  assert.match(optionsStyles, /\.customization-summary:focus-visible\s*\{/);
+  // The "Want to use another AI model?" remix card was removed from Settings.
+  assert.doesNotMatch(optionsPage, /customization|Local remix|agent-badge/i);
+  assert.doesNotMatch(optionsStyles, /customization|agent-badge|prompt-reminder/i);
+  assert.doesNotMatch(optionsScript, /customization|clipboard\.writeText/i);
   assert.match(optionsStyles, /\.data-card\s*\{[^}]*margin-top:\s*36px;/);
-  assert.match(optionsScript, /clipboard\.writeText/);
-  assert.match(optionsScript, /Edited prompt copied\./);
   assert.match(optionsScript, /migration\.migrated[\s\S]*storage\.set/);
   assert.doesNotMatch(optionsScript, /deepseek/i);
-
-  const customizationPrompt = `Customize this local Video Flow workspace to use [PROVIDER] with [MODEL]. Work only in the current workspace. Before editing, verify that it contains manifest.json and that the manifest name is Video Flow. If verification fails, stop and ask me to open the extracted Video Flow project folder in my coding agent. Do not search other folders, edit a guessed copy, assume an installation path, or claim Chrome can reveal the absolute OS source path. Update the provider's API endpoint, request format, and minimum Chrome host permissions. Preserve bring-your-own-key and local Chrome storage. Never put API keys in source code, commits, logs, screenshots, this prompt, or chat; after the code is ready, tell me where to enter the key myself. Keep the current OpenAI-compatible request code isolated from the new provider's request fields and retry behavior. Handle provider-specific rules separately so one provider does not affect another. Update README.md, README.zh-CN.md, PRIVACY.md, SECURITY.md, and tests. Run npm test, npm run check, and npm run package. Then explain how to reload the unpacked extension and test it on a real YouTube or Bilibili video.`;
-  assert.ok(optionsPage.includes(`>${customizationPrompt}</textarea>`));
-  assert.doesNotMatch(customizationPrompt, /Documents|USERPROFILE/);
 
   assert.match(readme, /^## Remix it with your coding agent$/m);
   assert.match(readme, /more translation languages/i);

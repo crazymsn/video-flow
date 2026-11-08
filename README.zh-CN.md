@@ -99,7 +99,7 @@ Base URL: https://api.meding.site
 
 使用方式和价格由网关运营方以及你在该网关上的账号决定。Video Flow 不收款，也不转售 API 服务。
 
-Key 只能粘贴到这些设置输入框中。不要把 Key 发送到 AI 对话、项目文件、截图或公开消息中。如果想使用其他网关或模型，请在设置中复制安全的自定义 prompt，让编程 Agent 修改你自己的本地副本。不要把任何 API Key 放进 prompt 或对话。
+Key 只能粘贴到这些设置输入框中。不要把 Key 发送到 AI 对话、项目文件、截图或公开消息中。如果想使用其他网关或模型，请让编程 Agent 修改你自己的本地副本。不要把任何 API Key 放进 prompt 或对话。
 
 如果你使用过会保存 DeepSeek Key 的早期版本，该 Key 会在你第一次打开设置页时被清除，请重新填写新的 Token。
 
@@ -161,7 +161,7 @@ Video Flow 使用原生 HTML、CSS 和 JavaScript，没有构建步骤，很适�
 
 请让 Agent 保留用户自带 API Key 的模式，不要把秘密写入源代码，并运行下方检查。分享自己的版本前，也要在真实视频上测试。
 
-发布版本的 Base URL 是固定的。如果想让自己的本地副本使用其他兼容 OpenAI 的网关或服务，请先在编程 Agent 中打开 Chrome 通过“加载已解压的扩展程序”使用的那个准确的 Video Flow 项目文件夹。然后打开 Video Flow 设置并点击 **Copy customization prompt**。发送前替换 `[PROVIDER]` 和 `[MODEL]`，但不要加入任何 API Key。Agent 完成本地代码修改后，请你自己在它指出的设置位置填写 Key。
+发布版本的 Base URL 是固定的。如果想让自己的本地副本使用其他兼容 OpenAI 的网关或服务，请先在编程 Agent 中打开 Chrome 通过“加载已解压的扩展程序”使用的那个准确的 Video Flow 项目文件夹。然后告诉它你想使用的服务和模型，但不要加入任何 API Key。Agent 完成本地代码修改后，请你自己在它指出的设置位置填写 Key。
 
 ## 隐私和数据流向
 
@@ -211,7 +211,7 @@ Video Flow 不会自动改用 AI 生成字幕，也不会转录音频。
 - `429` 通常表示达到了网关的限速或用量上限。
 - 确认 Token 属于你在该网关上的账号，并且账号有可用额度。
 - 如果模型列表获取失败，请手动输入模型名称，并确认你的账号可以使用该模型。
-- 如果你把本地副本改成了其他网关，请再次使用设置中的自定义 prompt，让编程 Agent 检查本地实现。
+- 如果你把本地副本改成了其他网关，请让编程 Agent 检查本地实现。
 
 不要在对话、截图或日志中分享 API Key、私密字幕或个人笔记。
 
@@ -226,10 +226,6 @@ npm run package
 ```
 
 Agent 还应该在 Chrome 中重新加载扩展，并测试多个真实 YouTube 和 Bilibili 视频。自动检查通过，不代表真实服务请求和页面交互一定正常。
-
-## 致谢
-
-Bilibili 支持改编自 [biuworks/bilibili-digest](https://github.com/biuworks/bilibili-digest)（MIT），该项目本身衍生自 [zarazhangrui/youtube-digest](https://github.com/zarazhangrui/youtube-digest)（MIT）。
 
 ## 开源许可
 

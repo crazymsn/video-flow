@@ -1491,9 +1491,41 @@ function switchTab(tabName) {
  * Triggers the LLM analysis (lazy-loaded when user clicks Overview or Quotes tab).
  * This saves tokens by not running analysis until needed.
  */
+function buildTimestampedTranscriptFromCache() {
+  if (!Array.isArray(currentTranscript) || currentTranscript.length === 0) {
+    return "";
+  }
+  return groupTranscriptEntries(currentTranscript)
+    .map((segment) => {
+      const minutes = Math.floor(segment.start / 60);
+      const seconds = Math.floor(segment.start % 60);
+      return `[${minutes}:${String(seconds).padStart(2, "0")}] ${segment.text}`;
+    })
+    .join("\n");
+}
+
+function renderAnalysisError(message) {
+  const safeMessage = escapeHtml(message || "Unable to load the overview.");
+  const chapterList = document.getElementById("chapterList");
+  const quotesList = document.getElementById("quotesList");
+  if (chapterList) {
+    chapterList.innerHTML = `<li class="chapter-item analysis-error">${safeMessage}</li>`;
+  }
+  if (quotesList) {
+    quotesList.innerHTML = `<div class="quote-item analysis-error">Overview could not be loaded. Switch tabs and try again.</div>`;
+  }
+}
+
 async function triggerAnalysis() {
-  if (!currentTranscriptTimestamped || isAnalysisLoading || currentAnalysis)
+  if (isAnalysisLoading || currentAnalysis) return;
+
+  if (!currentTranscriptTimestamped) {
+    currentTranscriptTimestamped = buildTimestampedTranscriptFromCache();
+  }
+  if (!currentTranscriptTimestamped) {
+    renderAnalysisError("No timestamped transcript is available for this video.");
     return;
+  }
 
   isAnalysisLoading = true;
 
@@ -1519,8 +1551,9 @@ async function triggerAnalysis() {
     });
 
     if (!analysisResult.success) {
-      if (chapterList)
-        chapterList.innerHTML = `<li class="chapter-item" style="color: var(--accent-text); border: none;">Analysis failed: ${escapeHtml(analysisResult.error || "Unknown error")}</li>`;
+      renderAnalysisError(
+        `Overview failed: ${analysisResult.error || "Unknown error"}`,
+      );
       isAnalysisLoading = false;
       return;
     }
@@ -1533,8 +1566,7 @@ async function triggerAnalysis() {
     await saveToCache(currentVideoId);
   } catch (error) {
     console.error("[Video Flow Panel] Analysis error:", error);
-    if (chapterList)
-      chapterList.innerHTML = `<li class="chapter-item" style="color: var(--accent-text); border: none;">Error: ${escapeHtml(error.message)}</li>`;
+    renderAnalysisError(`Overview error: ${error.message}`);
   }
 
   isAnalysisLoading = false;
@@ -2077,9 +2109,23 @@ async function loadNotes(videoId) {
       currentNotes = result.notes || [];
       currentNotesFilterVideoId = videoId;
       renderNotes(result.notes, videoId);
+    } else {
+      renderNotesError(result.error);
     }
   } catch (error) {
     console.error("[Video Flow Panel] Load notes error:", error);
+    renderNotesError(error.message);
+  }
+}
+
+function renderNotesError(message) {
+  const notesList = document.getElementById("notesList");
+  const notesIntro = document.getElementById("notesIntro");
+  if (notesList) {
+    notesList.innerHTML = `<div class="note-item notes-error">${escapeHtml(message || "Notes could not be loaded. Switch tabs and try again.")}</div>`;
+  }
+  if (notesIntro) {
+    notesIntro.style.display = "none";
   }
 }
 

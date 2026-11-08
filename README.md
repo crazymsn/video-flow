@@ -97,7 +97,7 @@ Model list: https://api.meding.site/v1/models
 
 Usage and pricing are governed by the gateway operator and your own account there. Video Flow does not collect payments or resell access.
 
-Paste keys only into these Settings fields. Never paste a key into an AI chat, repository file, screenshot, or public message. To use a different gateway or model, copy the safe customization prompt in Settings and give it to a coding agent for your local copy. Never add an API key to that prompt or chat.
+Paste keys only into these Settings fields. Never paste a key into an AI chat, repository file, screenshot, or public message. To use a different gateway or model, adapt your own local copy with a coding agent. Never add an API key to a prompt or chat.
 
 If you used an earlier version that saved a DeepSeek key, it is cleared the first time you open Settings. Enter a new token.
 
@@ -159,7 +159,7 @@ Video Flow uses plain HTML, CSS, and JavaScript with no build step, so it is a f
 
 Ask your agent to preserve the bring-your-own-key model, keep secrets out of source files, run the checks below, and test the remix on real videos.
 
-The Base URL is fixed in the published version. If you want to point your local copy at another OpenAI-compatible gateway or provider, first open the exact Video Flow project folder that Chrome loaded through **Load unpacked** in your coding agent. Then open Video Flow Settings and use **Copy customization prompt**. Replace the `[PROVIDER]` and `[MODEL]` placeholders before sending it. Do not include any API key in the prompt or chat. After the agent updates your local copy, enter the key yourself in the Settings field it identifies.
+The Base URL is fixed in the published version. If you want to point your local copy at another OpenAI-compatible gateway or provider, first open the exact Video Flow project folder that Chrome loaded through **Load unpacked** in your coding agent. Then describe the provider and model you want. Do not include any API key in the prompt or chat. After the agent updates your local copy, enter the key yourself in the Settings field it identifies.
 
 ## Privacy and data flow
 
@@ -209,7 +209,7 @@ Video Flow will not fall back to generated transcription or audio transcription.
 - A `429` usually means a rate or usage limit was reached on the gateway.
 - Confirm the token belongs to your account on the gateway and that the account has available quota.
 - If model fetching fails, type a model name manually and check that it is available to your account.
-- If you adapted a local copy for another gateway, use the Settings customization prompt again and ask your coding agent to inspect that local implementation.
+- If you adapted a local copy for another gateway, ask your coding agent to inspect that local implementation.
 
 Never share API keys, private transcripts, or personal notes in chats, screenshots, or logs.
 
@@ -224,10 +224,6 @@ npm run package
 ```
 
 The agent should also reload the unpacked extension in Chrome and test several real YouTube and Bilibili videos. Automated checks do not prove that live provider requests and page interactions work.
-
-## Acknowledgements
-
-Bilibili support is adapted from [biuworks/bilibili-digest](https://github.com/biuworks/bilibili-digest) (MIT), which is itself derived from [zarazhangrui/youtube-digest](https://github.com/zarazhangrui/youtube-digest) (MIT).
 
 ## License
 

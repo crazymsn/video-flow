@@ -45,7 +45,7 @@ AI features use an OpenAI-compatible Chat Completions API at the fixed Base URL 
   translation, or requested overview or explanation content;
 - nearby transcript context and video metadata when polishing a saved note.
 
-The Base URL is fixed in the published Settings page and cannot be changed there. You provide one API token and choose a model from the fetched list (or type a model name manually). There is no default model. To use another gateway or model, you must adapt your own local source copy and its permissions. The Settings page provides a coding-agent prompt for that purpose and warns you never to include an API key in the prompt or chat.
+The Base URL is fixed in the published Settings page and cannot be changed there. You provide one API token and choose a model from the fetched list (or type a model name manually). There is no default model. To use another gateway or model, you must adapt your own local source copy and its permissions. Never include an API key in a coding-agent prompt or chat.
 
 Video Flow's developer does not operate this gateway, does not proxy or receive these requests, and does not collect payments or resell access. The gateway operator's terms, privacy policy, retention practices, and your account settings there apply to everything sent to it. Usage and pricing are governed by the gateway operator and your own account.
 

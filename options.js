@@ -31,25 +31,6 @@ const YTD_OPTIONS = (() => {
       privacyNote:
         "When you use AI features, the gateway at the Base URL receives the video transcript and relevant video context. Review its terms and pricing before saving.",
       saveSettings: "Save settings",
-      localRemix: "Local remix",
-      customizationTitle: "Want to use another AI model?",
-      customizationPurpose: "Edit and copy a safe prompt for your coding agent",
-      agentBadge: "Coding agent ready",
-      customizationIntro:
-        "You can edit the prompt directly. Complete these three steps before copying:",
-      customizationStepFolder:
-        "Open the extracted Video Flow project folder in your coding agent.",
-      customizationStepReplace:
-        "Replace [PROVIDER] and [MODEL] with the service and model you want to use.",
-      customizationStepKeys:
-        "Never include API keys in the prompt or chat. Enter them yourself after the code is ready.",
-      customizationPromptLabel: "Editable customization prompt",
-      customizationReminderLabel: "Prompt reminder",
-      customizationReminder:
-        "Before copying, replace [PROVIDER] and [MODEL] with the provider and model you want to use.",
-      customizationPrompt:
-        "Customize this local Video Flow workspace to use [PROVIDER] with [MODEL]. Work only in the current workspace. Before editing, verify that it contains manifest.json and that the manifest name is Video Flow. If verification fails, stop and ask me to open the extracted Video Flow project folder in my coding agent. Do not search other folders, edit a guessed copy, assume an installation path, or claim Chrome can reveal the absolute OS source path. Update the provider's API endpoint, request format, and minimum Chrome host permissions. Preserve bring-your-own-key and local Chrome storage. Never put API keys in source code, commits, logs, screenshots, this prompt, or chat; after the code is ready, tell me where to enter the key myself. Keep the current OpenAI-compatible request code isolated from the new provider's request fields and retry behavior. Handle provider-specific rules separately so one provider does not affect another. Update README.md, README.zh-CN.md, PRIVACY.md, SECURITY.md, and tests. Run npm test, npm run check, and npm run package. Then explain how to reload the unpacked extension and test it on a real YouTube or Bilibili video.",
-      copyCustomizationPrompt: "Copy edited prompt",
       localData: "Local data",
       localDataHelp:
         "Digests, translations, and notes are stored only in this Chrome profile. You can remove them at any time.",
@@ -73,10 +54,6 @@ const YTD_OPTIONS = (() => {
       modelNotListed: ({ model }) => `Saved model "${model}" is not in the list.`,
       saved: "Saved. Reopen Video Flow to use these settings.",
       saveFailed: "Could not save settings. Please try again.",
-      copying: "Copying…",
-      promptCopied: "Edited prompt copied.",
-      copyFailed:
-        "Could not copy the prompt. Select the prompt text and copy it manually.",
       clearedDigests: ({ count }) =>
         `Cleared ${count} cached digest${count === 1 ? "" : "s"}.`,
       notesDeleted: "Deleted all saved notes.",
@@ -111,24 +88,6 @@ const YTD_OPTIONS = (() => {
       privacyNote:
         "使用 AI 功能时，Base URL 对应的网关会收到视频字幕及相关视频上下文。保存前请查看其服务条款和价格。",
       saveSettings: "保存设置",
-      localRemix: "本地改造",
-      customizationTitle: "想使用其他 AI 模型？",
-      customizationPurpose: "编辑并复制一段可安全交给编程 Agent 的提示词",
-      agentBadge: "可交给编程 Agent",
-      customizationIntro: "你可以直接编辑提示词。复制前完成以下三步：",
-      customizationStepFolder:
-        "在编程 Agent 中打开 Video Flow 解压后的项目文件夹。",
-      customizationStepReplace:
-        "把 [PROVIDER] 和 [MODEL] 替换成你想使用的服务和模型。",
-      customizationStepKeys:
-        "不要在提示词或聊天中加入 API 密钥。代码准备好后，请自行填写。",
-      customizationPromptLabel: "可编辑的自定义提示词",
-      customizationReminderLabel: "提示词提醒",
-      customizationReminder:
-        "复制前，请先把 [PROVIDER] 和 [MODEL] 替换成你想使用的服务和模型。",
-      customizationPrompt:
-        "请把当前本地 Video Flow 工作区改为使用 [PROVIDER] 提供的 [MODEL]。只在当前工作区中操作。编辑前，先确认其中包含 manifest.json，且 manifest 中的 name 是 Video Flow。如果验证失败，请停止，并让我在编程 Agent 中打开 Video Flow 解压后的项目文件夹。不要搜索其他文件夹，不要编辑猜测的副本，不要假设安装路径，也不要声称 Chrome 可以显示操作系统中的绝对源码路径。更新该服务的 API endpoint、请求格式和最少的 Chrome host permissions。保留用户自带密钥模式和 Chrome 本地存储。不要把 API 密钥写入源代码、提交记录、日志、截图、这段提示词或聊天；代码准备好后，请告诉我应该在哪里自行填写密钥。现有的 OpenAI 兼容请求代码要与新服务的请求参数和重试逻辑分开。新服务的专属规则请单独处理，避免相互影响。更新 README.md、README.zh-CN.md、PRIVACY.md、SECURITY.md 和测试。运行 npm test、npm run check 和 npm run package。最后，说明如何重新加载已解压的扩展，并在真实 YouTube 或 Bilibili 视频上测试。",
-      copyCustomizationPrompt: "复制编辑后的提示词",
       localData: "本地数据",
       localDataHelp:
         "摘要、翻译和笔记仅保存在当前 Chrome 个人资料中。你可以随时删除。",
@@ -151,9 +110,6 @@ const YTD_OPTIONS = (() => {
       modelNotListed: ({ model }) => `已保存的模型“${model}”不在列表中。`,
       saved: "已保存。请重新打开 Video Flow 以使用这些设置。",
       saveFailed: "无法保存设置，请重试。",
-      copying: "正在复制…",
-      promptCopied: "已复制编辑后的提示词。",
-      copyFailed: "无法复制提示词。请选中提示词文本并手动复制。",
       clearedDigests: ({ count }) => `已清除 ${count} 条缓存摘要。`,
       notesDeleted: "已删除全部已保存的笔记。",
       resetConfirm:
@@ -296,62 +252,6 @@ const YTD_OPTIONS = (() => {
     }
   }
 
-  function updateLocalizedPrompt(textarea, prompt) {
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-    const selectionDirection = textarea.selectionDirection;
-    const scrollTop = textarea.scrollTop;
-    const scrollLeft = textarea.scrollLeft;
-
-    textarea.value = prompt;
-
-    if (
-      Number.isInteger(selectionStart) &&
-      Number.isInteger(selectionEnd) &&
-      typeof textarea.setSelectionRange === "function"
-    ) {
-      textarea.setSelectionRange(
-        Math.min(selectionStart, prompt.length),
-        Math.min(selectionEnd, prompt.length),
-        selectionDirection || "none",
-      );
-    }
-    textarea.scrollTop = scrollTop;
-    textarea.scrollLeft = scrollLeft;
-  }
-
-  function createPromptDrafts() {
-    return {
-      en: translate("en", "customizationPrompt"),
-      "zh-CN": translate("zh-CN", "customizationPrompt"),
-    };
-  }
-
-  function switchPromptDraft(
-    drafts,
-    currentLanguage,
-    nextLanguage,
-    currentValue,
-  ) {
-    const normalizedCurrentLanguage = normalizeLanguage(currentLanguage);
-    const normalizedNextLanguage = normalizeLanguage(nextLanguage);
-    drafts[normalizedCurrentLanguage] = String(currentValue ?? "");
-    if (typeof drafts[normalizedNextLanguage] !== "string") {
-      drafts[normalizedNextLanguage] = translate(
-        normalizedNextLanguage,
-        "customizationPrompt",
-      );
-    }
-    return {
-      language: normalizedNextLanguage,
-      prompt: drafts[normalizedNextLanguage],
-    };
-  }
-
-  async function copyPromptValue(clipboard, value) {
-    await clipboard.writeText(value);
-  }
-
   function getSafeLocalStorage(root) {
     try {
       return root.localStorage;
@@ -377,16 +277,10 @@ const YTD_OPTIONS = (() => {
     const refreshModelsBtn = doc.getElementById("refreshModelsBtn");
     const modelStatus = doc.getElementById("modelStatus");
     const supadataApiKeyInput = doc.getElementById("supadataApiKey");
-    const customizationPrompt = doc.getElementById("customizationPrompt");
-    const copyCustomizationPromptBtn = doc.getElementById(
-      "copyCustomizationPromptBtn",
-    );
-    const copyStatus = doc.getElementById("copyStatus");
     const saveStatus = doc.getElementById("saveStatus");
     const dataStatus = doc.getElementById("dataStatus");
     const languageButtons = [...doc.querySelectorAll("[data-language]")];
     const statusStates = new Map();
-    const promptDrafts = createPromptDrafts();
     let currentLanguage = "en";
 
     function renderStatus(element) {
@@ -402,13 +296,7 @@ const YTD_OPTIONS = (() => {
     }
 
     function applyLanguage(language) {
-      const nextDraft = switchPromptDraft(
-        promptDrafts,
-        currentLanguage,
-        language,
-        customizationPrompt.value,
-      );
-      currentLanguage = nextDraft.language;
+      currentLanguage = normalizeLanguage(language);
       doc.documentElement.lang = currentLanguage;
       doc.title = translate(currentLanguage, "pageTitle");
 
@@ -431,10 +319,6 @@ const YTD_OPTIONS = (() => {
         );
       }
 
-      updateLocalizedPrompt(
-        customizationPrompt,
-        nextDraft.prompt,
-      );
       updateLanguageButtonState(languageButtons, currentLanguage);
       for (const element of statusStates.keys()) renderStatus(element);
     }
@@ -598,19 +482,6 @@ const YTD_OPTIONS = (() => {
       }
     }
 
-    async function copyCustomizationPrompt() {
-      setStatus(copyStatus, "copying");
-      try {
-        await copyPromptValue(
-          root.navigator.clipboard,
-          customizationPrompt.value,
-        );
-        setStatus(copyStatus, "promptCopied");
-      } catch (_error) {
-        setStatus(copyStatus, "copyFailed");
-      }
-    }
-
     async function clearCachedDigests() {
       const all = await storage.get(null);
       const keys = Object.keys(all).filter((key) => key.startsWith("digest_"));
@@ -641,10 +512,6 @@ const YTD_OPTIONS = (() => {
       clearTimeout(modelDebounce);
       void loadModels();
     });
-    copyCustomizationPromptBtn.addEventListener(
-      "click",
-      copyCustomizationPrompt,
-    );
     doc
       .getElementById("clearCacheBtn")
       .addEventListener("click", clearCachedDigests);
@@ -668,16 +535,12 @@ const YTD_OPTIONS = (() => {
   return {
     COPY,
     LANGUAGE_STORAGE_KEY,
-    copyPromptValue,
-    createPromptDrafts,
     createStorageAdapter,
     normalizeLanguage,
     persistPreferredLanguage,
     readPreferredLanguage,
     translate,
     updateLanguageButtonState,
-    updateLocalizedPrompt,
-    switchPromptDraft,
     initialize,
   };
 })();
