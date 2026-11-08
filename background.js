@@ -28,7 +28,7 @@ const debugLog = (...args) => {
 chrome.storage.local
   .setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" })
   .catch((error) =>
-    console.warn("[Video Digest] Could not restrict storage access:", error),
+    console.warn("[Video Flow] Could not restrict storage access:", error),
   );
 
 async function getSettings() {
@@ -107,7 +107,7 @@ function describeAiSetupProblem(settings) {
     return {
       success: false,
       error: "NO_AI_KEY",
-      message: "AI API token not configured. Open Video Digest Settings.",
+      message: "AI API token not configured. Open Video Flow Settings.",
     };
   }
   if (!settings.aiModel) {
@@ -115,7 +115,7 @@ function describeAiSetupProblem(settings) {
       success: false,
       error: "NO_AI_MODEL",
       message:
-        "No AI model selected. Open Video Digest Settings and choose a model.",
+        "No AI model selected. Open Video Flow Settings and choose a model.",
     };
   }
   return null;
@@ -166,14 +166,14 @@ async function requestAiCompletion({
   const settings = await getSettings();
   if (!settings.aiApiKey) {
     const error = new Error(
-      "AI API token not configured. Open Video Digest Settings.",
+      "AI API token not configured. Open Video Flow Settings.",
     );
     error.code = "NO_AI_KEY";
     throw error;
   }
   if (!settings.aiModel) {
     const error = new Error(
-      "No AI model selected. Open Video Digest Settings and choose a model.",
+      "No AI model selected. Open Video Flow Settings and choose a model.",
     );
     error.code = "NO_AI_MODEL";
     throw error;
@@ -352,7 +352,7 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
  * Keep the side panel scoped to YouTube and Bilibili tabs only.
  *
  * Chrome side panels are "global" by default: once opened, the panel follows
- * you to every tab. To make Video Digest behave like a video-site tool, we
+ * you to every tab. To make Video Flow behave like a video-site tool, we
  * enable the panel on YouTube and Bilibili tabs and disable it everywhere
  * else. Disabling
  * on a tab makes Chrome hide/close the panel for that tab, so it never lingers
@@ -370,7 +370,7 @@ async function closePanelForTab(tabId, windowId) {
   if (typeof chrome.sidePanel.close !== "function") return;
 
   try {
-    // This closes the tab-specific panel used by Video Digest.
+    // This closes the tab-specific panel used by Video Flow.
     await chrome.sidePanel.close({ tabId });
     return;
   } catch (error) {
@@ -552,7 +552,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === "openSidePanel") {
     const tabId = sender.tab?.id;
-    debugLog("[Video Digest BG] openSidePanel requested from tab:", tabId);
+    debugLog("[Video Flow BG] openSidePanel requested from tab:", tabId);
 
     // Re-enable the panel (it may have been disabled by auto-close) and open it.
     // IMPORTANT: we call setOptions + open synchronously (no await between them)
@@ -575,7 +575,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }, 300);
         })
         .catch((err) => {
-          console.error("[Video Digest BG] openSidePanel error:", err);
+          console.error("[Video Flow BG] openSidePanel error:", err);
         });
     } else {
       // Fallback: find the active tab
@@ -590,7 +590,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
             chrome.sidePanel.open({ tabId: tabs[0].id }).catch((err) => {
               console.error(
-                "[Video Digest BG] openSidePanel fallback error:",
+                "[Video Flow BG] openSidePanel fallback error:",
                 err,
               );
             });
@@ -604,7 +604,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Relay messages from side panel to content script
   if (message.action === "relayToContent") {
-    debugLog("[Video Digest BG] Relay request:", message.payload?.action);
+    debugLog("[Video Flow BG] Relay request:", message.payload?.action);
     (async () => {
       try {
         // Query specifically for supported video tabs to avoid side panel
@@ -618,7 +618,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           lastFocusedWindow: true,
         });
         debugLog(
-          "[Video Digest BG] Active tab in last focused window:",
+          "[Video Flow BG] Active tab in last focused window:",
           tabs.length,
           tabs[0]?.url,
         );
@@ -629,18 +629,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             url: videoSiteUrls,
             active: true,
           });
-          debugLog("[Video Digest BG] Active video tabs:", tabs.length);
+          debugLog("[Video Flow BG] Active video tabs:", tabs.length);
         }
 
         // Still nothing? Try any video tab
         if (!tabs[0]) {
           tabs = await chrome.tabs.query({ url: videoSiteUrls });
-          debugLog("[Video Digest BG] Any video tabs:", tabs.length);
+          debugLog("[Video Flow BG] Any video tabs:", tabs.length);
         }
 
         if (tabs[0]) {
           debugLog(
-            "[Video Digest BG] Sending to tab:",
+            "[Video Flow BG] Sending to tab:",
             tabs[0].id,
             "URL:",
             tabs[0].url,
@@ -675,14 +675,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
           }
 
-          debugLog("[Video Digest BG] Got response from content:", response);
+          debugLog("[Video Flow BG] Got response from content:", response);
           sendResponse({ success: true, response });
         } else {
-          debugLog("[Video Digest BG] No video tab found");
+          debugLog("[Video Flow BG] No video tab found");
           sendResponse({ success: false, error: "No video tab found" });
         }
       } catch (err) {
-        console.error("[Video Digest BG] Relay error:", err.message);
+        console.error("[Video Flow BG] Relay error:", err.message);
         sendResponse({ success: false, error: err.message });
       }
     })();
@@ -724,7 +724,7 @@ async function getPlayerVideoDetails(tabId) {
     });
     return results?.[0]?.result || null;
   } catch (e) {
-    console.warn("[Video Digest BG] Player details unavailable:", e.message);
+    console.warn("[Video Flow BG] Player details unavailable:", e.message);
     return null;
   }
 }
@@ -758,7 +758,7 @@ async function handleFetchTranscript(videoId) {
       return {
         success: false,
         error: "NO_SUPADATA_KEY",
-        message: "Supadata API key not configured. Open Video Digest Settings.",
+        message: "Supadata API key not configured. Open Video Flow Settings.",
       };
     }
 
@@ -802,7 +802,7 @@ async function handleFetchTranscript(videoId) {
         return {
           success: false,
           error: "INVALID_SUPADATA_KEY",
-          message: "Your Supadata API key is invalid. Open Video Digest Settings.",
+          message: "Your Supadata API key is invalid. Open Video Flow Settings.",
         };
       }
       if (response.status === 404) {
@@ -1082,7 +1082,7 @@ async function handleAnalyzeTranscript(
       promptVariables,
     );
 
-    debugLog("[Video Digest] Requesting video analysis", settings.aiModel);
+    debugLog("[Video Flow] Requesting video analysis", settings.aiModel);
     const { text: responseText } = await requestAiCompletion({
       maxTokens: 8192,
       responseFormat: { type: "json_object" },
@@ -1292,10 +1292,10 @@ async function handleSaveNote(
       const cached = await chrome.storage.local.get(`digest_${videoId}`);
       if (cached[`digest_${videoId}`]?.transcript) {
         transcript = cached[`digest_${videoId}`].transcript;
-        debugLog("[Video Digest] Using cached transcript for note");
+        debugLog("[Video Flow] Using cached transcript for note");
       }
     } catch (e) {
-      debugLog("[Video Digest] No cached transcript, fetching...");
+      debugLog("[Video Flow] No cached transcript, fetching...");
     }
 
     // If no cached transcript, fetch it
@@ -1413,7 +1413,7 @@ async function handleSaveNote(
 
     return { success: true, note };
   } catch (error) {
-    console.error("[Video Digest] Save note error:", error);
+    console.error("[Video Flow] Save note error:", error);
     return { success: false, error: error.message };
   }
 }
@@ -1436,7 +1436,7 @@ async function cleanupNoteText(
   }
 
   try {
-    debugLog("[Video Digest] Requesting note cleanup");
+    debugLog("[Video Flow] Requesting note cleanup");
     const variables = {
       videoTitle: videoTitle || "Unknown",
       fullContext,
@@ -1473,7 +1473,7 @@ async function cleanupNoteText(
       }
     } catch (parseError) {
       console.warn(
-        "[Video Digest] JSON parse failed for note, stripping preambles:",
+        "[Video Flow] JSON parse failed for note, stripping preambles:",
         parseError,
       );
       result = result.replace(
@@ -1491,7 +1491,7 @@ async function cleanupNoteText(
 
     return result.slice(0, 3000);
   } catch (e) {
-    console.error("[Video Digest] Cleanup error:", e);
+    console.error("[Video Flow] Cleanup error:", e);
   }
 
   // Return combined raw text if cleanup fails
@@ -1573,7 +1573,7 @@ async function handleExplainSelection(
       variables,
     );
 
-    debugLog("[Video Digest] Requesting selection explanation");
+    debugLog("[Video Flow] Requesting selection explanation");
     const { text: explanation } = await requestAiCompletion({
       maxTokens: 1024,
       messages: [
@@ -1771,7 +1771,7 @@ async function handleTranslateContent(
     }
     return { success: true, translatedContent: aligned };
   } catch (error) {
-    console.error("[Video Digest] Translation error:", error);
+    console.error("[Video Flow] Translation error:", error);
     return { success: false, error: error.message || "Translation failed" };
   }
 }

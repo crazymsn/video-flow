@@ -79,6 +79,37 @@ test("the model list parser accepts OpenAI-style payloads", () => {
   assert.deepEqual(settings.parseModelList({ error: "nope" }), []);
 });
 
+test("non-chat models are hidden from the model list", () => {
+  const blocked = [
+    "BAAI/bge-large-en-v1.5",
+    "BAAI/bge-large-zh-v1.5",
+    "BAAI/bge-m3",
+    "BAAI/bge-reranker-v2-m3",
+    "chirp-v3-5",
+  ];
+  assert.deepEqual([...settings.BLOCKED_MODELS], blocked);
+
+  const payload = {
+    data: [...blocked, "gpt-example", "baai/BGE-M3", "bge-m3-custom"].map(
+      (id) => ({ id }),
+    ),
+  };
+  // Matching ignores case; similar-looking chat models are kept.
+  assert.deepEqual(settings.parseModelList(payload), [
+    "bge-m3-custom",
+    "gpt-example",
+  ]);
+
+  for (const model of blocked) {
+    assert.equal(settings.isBlockedModel(model), true, model);
+    // A stale saved choice or a typed name cannot bring them back.
+    assert.equal(settings.normalizeModel(model), "", model);
+    assert.equal(settings.normalize({ aiModel: model }).aiModel, "", model);
+  }
+  assert.equal(settings.isBlockedModel("gpt-example"), false);
+  assert.equal(settings.isBlockedModel(undefined), false);
+});
+
 test("Supadata receives a canonical YouTube URL", () => {
   assert.equal(
     settings.canonicalYouTubeUrl("ydTeb_I0b94"),

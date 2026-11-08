@@ -20,6 +20,24 @@ var YTD_SETTINGS = (() => {
   const CHAT_COMPLETIONS_PATH = "/v1/chat/completions";
   const MODELS_PATH = "/v1/models";
   const MODEL_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$/;
+  // Embedding, reranker and speech/music models the gateway lists but that
+  // cannot answer chat completions. They are hidden from the model picker.
+  const BLOCKED_MODELS = Object.freeze([
+    "BAAI/bge-large-en-v1.5",
+    "BAAI/bge-large-zh-v1.5",
+    "BAAI/bge-m3",
+    "BAAI/bge-reranker-v2-m3",
+    "chirp-v3-5",
+  ]);
+  const BLOCKED_MODEL_KEYS = new Set(
+    BLOCKED_MODELS.map((model) => model.toLowerCase()),
+  );
+
+  function isBlockedModel(value) {
+    return (
+      typeof value === "string" && BLOCKED_MODEL_KEYS.has(value.trim().toLowerCase())
+    );
+  }
   const YOUTUBE_HOST = "www.youtube.com";
   const BILIBILI_HOST = "www.bilibili.com";
   const BILIBILI_VIDEO_PATTERN = /^BV[0-9A-Za-z]{10}$/;
@@ -41,7 +59,9 @@ var YTD_SETTINGS = (() => {
 
   function normalizeModel(value) {
     const model = typeof value === "string" ? value.trim() : "";
-    return MODEL_NAME_PATTERN.test(model) ? model : "";
+    // Blocked models are rejected here too, so a stale saved choice or a
+    // manually typed name cannot bring one back.
+    return MODEL_NAME_PATTERN.test(model) && !isBlockedModel(model) ? model : "";
   }
 
   function normalize(input = {}) {
@@ -89,6 +109,7 @@ var YTD_SETTINGS = (() => {
     const ids = new Set();
     for (const row of rows) {
       const id = normalizeModel(typeof row === "string" ? row : row?.id);
+      // normalizeModel already drops blocked (non-chat) models.
       if (id) ids.add(id);
     }
     return [...ids].sort((a, b) => a.localeCompare(b));
@@ -225,6 +246,8 @@ var YTD_SETTINGS = (() => {
     chatCompletionsUrl,
     modelsUrl,
     parseModelList,
+    isBlockedModel,
+    BLOCKED_MODELS,
     canonicalYouTubeUrl,
     isSupportedPageUrl,
     isYouTubeUrl,

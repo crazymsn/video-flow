@@ -90,7 +90,7 @@ function tryInjectNoteButton() {
 
     if (attempts >= maxAttempts) {
       debugLog(
-        "[Video Digest Content] Player container not found after retries, giving up",
+        "[Video Flow Content] Player container not found after retries, giving up",
       );
       if (ytdNoteButtonRetryTimer) {
         clearInterval(ytdNoteButtonRetryTimer);
@@ -122,12 +122,12 @@ if (document.readyState === "loading") {
  * When they send key moments, we highlight them on the progress bar.
  */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  debugLog("[Video Digest Content] Received message:", message.action, message);
+  debugLog("[Video Flow Content] Received message:", message.action, message);
 
   if (message.action === "getVideoInfo") {
     // Read video title and channel name from the page
     const info = extractVideoInfo();
-    debugLog("[Video Digest Content] Returning video info:", info);
+    debugLog("[Video Flow Content] Returning video info:", info);
     sendResponse(info);
     return false; // Synchronous response
   }
@@ -150,7 +150,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === "seekTo") {
     // Jump the video to a specific timestamp
-    debugLog("[Video Digest Content] Seeking to:", message.seconds);
+    debugLog("[Video Flow Content] Seeking to:", message.seconds);
     seekToTimestamp(message.seconds);
     sendResponse({ success: true });
     return false;
@@ -164,7 +164,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // Unknown action - still send a response to prevent hanging
-  debugLog("[Video Digest Content] Unknown action:", message.action);
+  debugLog("[Video Flow Content] Unknown action:", message.action);
   sendResponse({ success: false, error: "Unknown action" });
   return false;
 });
@@ -177,7 +177,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * Injects a "Digest" button into YouTube's action bar.
  * The button appears next to Share, Save, etc. below the video.
  *
- * When clicked, it opens the Video Digest side panel.
+ * When clicked, it opens the Video Flow side panel.
  */
 function isVisibleDigestHost(element) {
   if (!element || !element.isConnected) return false;
@@ -231,10 +231,10 @@ function createDigestButton() {
   const digestButton = document.createElement("button");
   digestButton.id = "ytd-digest-button";
   digestButton.type = "button";
-  digestButton.setAttribute("aria-label", "Open Video Digest");
+  digestButton.setAttribute("aria-label", "Open Video Flow");
   digestButton.innerHTML = `<span class="ytd-digest-label">Digest</span>`;
 
-  // Style the button — rounded pill in our terracotta accent, sized to sit
+  // Style the button — rounded pill in our brand accent, sized to sit
   // comfortably among YouTube's native action buttons.
   digestButton.style.cssText = `
     display: inline-flex;
@@ -244,7 +244,7 @@ function createDigestButton() {
     height: 36px;
     border: none;
     border-radius: 18px;
-    background: #c8674f;
+    background: #d43366;
     color: white;
     font-family: "Roboto", "Arial", sans-serif;
     font-size: 14px;
@@ -262,12 +262,12 @@ function createDigestButton() {
 
   // Hover effects
   digestButton.addEventListener("mouseenter", () => {
-    digestButton.style.background = "#b25742";
+    digestButton.style.background = "#b82a58";
     digestButton.style.transform = "scale(1.02)";
   });
 
   digestButton.addEventListener("mouseleave", () => {
-    digestButton.style.background = "#c8674f";
+    digestButton.style.background = "#d43366";
     digestButton.style.transform = "scale(1)";
   });
 
@@ -276,16 +276,16 @@ function createDigestButton() {
     e.preventDefault();
     e.stopPropagation();
 
-    debugLog("[Video Digest] Digest button clicked");
+    debugLog("[Video Flow] Digest button clicked");
 
     // Send message to background script to open side panel
     try {
       const result = await chrome.runtime.sendMessage({
         action: "openSidePanel",
       });
-      debugLog("[Video Digest] openSidePanel response:", result);
+      debugLog("[Video Flow] openSidePanel response:", result);
     } catch (err) {
-      console.error("[Video Digest] Failed to open side panel:", err);
+      console.error("[Video Flow] Failed to open side panel:", err);
     }
   });
 
@@ -311,7 +311,7 @@ function injectDigestButton() {
 
   const actionsContainer = findDigestButtonHost();
   if (!actionsContainer) {
-    debugLog("[Video Digest Content] Visible actions container not found yet");
+    debugLog("[Video Flow Content] Visible actions container not found yet");
     return false;
   }
 
@@ -337,7 +337,7 @@ function injectDigestButton() {
     actionsContainer.insertBefore(digestButton, actionsContainer.firstChild);
   }
 
-  debugLog("[Video Digest Content] Digest button reconciled");
+  debugLog("[Video Flow Content] Digest button reconciled");
   return true;
 }
 
@@ -419,7 +419,7 @@ function injectNoteButton() {
 
   if (!playerContainer) {
     debugLog(
-      "[Video Digest Content] Player container not found yet, will retry",
+      "[Video Flow Content] Player container not found yet, will retry",
     );
     return;
   }
@@ -432,7 +432,7 @@ function injectNoteButton() {
     playerContainer.style.position = "relative";
   }
 
-  debugLog("[Video Digest Content] Injecting note button");
+  debugLog("[Video Flow Content] Injecting note button");
 
   // Create the note button — a soft rounded pill that floats over the player
   const noteButton = document.createElement("button");
@@ -445,7 +445,7 @@ function injectNoteButton() {
     <span>Note</span>
   `;
 
-  // Soft rounded pill in the terracotta accent, with a gentle shadow.
+  // Soft rounded pill in the brand accent, with a gentle shadow.
   // Start hidden; visibility is controlled by mouse activity.
   noteButton.style.cssText = `
     position: absolute;
@@ -455,7 +455,7 @@ function injectNoteButton() {
     display: flex;
     align-items: center;
     padding: 9px 16px;
-    background: #c8674f;
+    background: #d43366;
     color: white;
     border: none;
     border-radius: 999px;
@@ -492,13 +492,13 @@ function injectNoteButton() {
 
   // Hover effect — lift slightly
   noteButton.addEventListener("mouseenter", () => {
-    noteButton.style.background = "#b25742";
+    noteButton.style.background = "#b82a58";
     noteButton.style.boxShadow = "0 6px 18px rgba(0,0,0,0.35)";
     noteButton.style.transform = "translateY(-1px)";
   });
 
   noteButton.addEventListener("mouseleave", () => {
-    noteButton.style.background = "#c8674f";
+    noteButton.style.background = "#d43366";
     noteButton.style.boxShadow = "0 4px 14px rgba(0,0,0,0.3)";
     noteButton.style.transform = "translateY(0)";
   });
@@ -512,7 +512,7 @@ function injectNoteButton() {
 
   playerContainer.appendChild(noteButton);
 
-  debugLog("[Video Digest Content] Note button injected");
+  debugLog("[Video Flow Content] Note button injected");
 }
 
 function showNoteButton() {
@@ -568,11 +568,11 @@ function handleNoteKeyboardShortcut(e) {
  * Captures the current timestamp and saves it as a note.
  */
 async function saveCurrentNote() {
-  debugLog("[Video Digest] Saving note");
+  debugLog("[Video Flow] Saving note");
 
   const video = document.querySelector("video.html5-main-video");
   if (!video) {
-    console.error("[Video Digest] No video element found");
+    console.error("[Video Flow] No video element found");
     return;
   }
 
@@ -611,20 +611,20 @@ async function saveCurrentNote() {
         noteButton.innerHTML =
           '<span style="letter-spacing: 0.2px;">ERROR</span>';
       }
-      console.error("[Video Digest] Save note error:", result.error);
+      console.error("[Video Flow] Save note error:", result.error);
     }
   } catch (err) {
     if (noteButton) {
       noteButton.innerHTML =
         '<span style="letter-spacing: 0.2px;">ERROR</span>';
     }
-    console.error("[Video Digest] Save note exception:", err);
+    console.error("[Video Flow] Save note exception:", err);
   }
 
   setTimeout(() => {
     if (noteButton) {
       noteButton.innerHTML = originalContent;
-      noteButton.style.background = "#c8674f";
+      noteButton.style.background = "#d43366";
       noteButton.style.pointerEvents = "auto";
     }
   }, 2000);
@@ -641,11 +641,11 @@ function showNoteSavedToast(note) {
   const toast = document.createElement("div");
   toast.id = "ytd-note-toast";
   toast.innerHTML = `
-    <div style="font-weight: 700; margin-bottom: 6px; color: #c8674f;">Note saved</div>
-    <div style="font-size: 12px; color: #6b6258; margin-bottom: 8px;">${escapeHtmlForContent(note.timestamp)} — ${escapeHtmlForContent(note.videoTitle)}</div>
-    <div style="font-size: 13px; line-height: 1.55; color: #2e2a24;">"${escapeHtmlForContent(note.text)}"</div>
+    <div style="font-weight: 700; margin-bottom: 6px; color: #c9385f;">Note saved</div>
+    <div style="font-size: 12px; color: #6e6569; margin-bottom: 8px;">${escapeHtmlForContent(note.timestamp)} — ${escapeHtmlForContent(note.videoTitle)}</div>
+    <div style="font-size: 13px; line-height: 1.55; color: #2b2629;">"${escapeHtmlForContent(note.text)}"</div>
     <div style="margin-top: 10px; font-size: 11px;">
-      <a href="${escapeHtmlForContent(note.timestampedUrl)}" style="color: #c8674f; font-weight: 600; text-decoration: none;">Copy link</a>
+      <a href="${escapeHtmlForContent(note.timestampedUrl)}" style="color: #c9385f; font-weight: 600; text-decoration: none;">Copy link</a>
     </div>
   `;
 
@@ -655,11 +655,11 @@ function showNoteSavedToast(note) {
     right: 20px;
     z-index: 999999;
     background: #ffffff;
-    border: 1px solid #ece5d9;
+    border: 1px solid #ece4e7;
     border-radius: 14px;
     padding: 16px 20px;
     max-width: 350px;
-    box-shadow: 0 12px 32px rgba(50, 42, 32, 0.2);
+    box-shadow: 0 12px 32px rgba(60, 40, 50, 0.2);
     font-family: system-ui, -apple-system, "Roboto", sans-serif;
     animation: ytdSlideIn 0.3s ease;
   `;
@@ -768,11 +768,11 @@ function highlightKeyMoments(moments, videoDuration) {
 function seekToTimestamp(seconds) {
   const video = document.querySelector("video.html5-main-video");
   if (!video) {
-    console.error("[Video Digest Content] No video element found for seek");
+    console.error("[Video Flow Content] No video element found for seek");
     return;
   }
 
-  debugLog("[Video Digest Content] Seeking to:", seconds);
+  debugLog("[Video Flow Content] Seeking to:", seconds);
   video.currentTime = seconds;
   // Also play the video if it's paused
   if (video.paused) {

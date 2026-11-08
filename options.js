@@ -1,11 +1,11 @@
 const YTD_OPTIONS = (() => {
   const LANGUAGE_STORAGE_KEY = "ytd_options_language";
-  const PREVIEW_STORAGE_PREFIX = "videoDigestPreview:";
+  const PREVIEW_STORAGE_PREFIX = "videoFlowPreview:";
   const SUPPORTED_LANGUAGES = new Set(["en", "zh-CN"]);
 
   const COPY = {
     en: {
-      pageTitle: "Video Digest Settings",
+      pageTitle: "Video Flow Settings",
       languageGroupLabel: "Interface language",
       heading: "Bring your own API keys",
       lede:
@@ -38,7 +38,7 @@ const YTD_OPTIONS = (() => {
       customizationIntro:
         "You can edit the prompt directly. Complete these three steps before copying:",
       customizationStepFolder:
-        "Open the extracted Video Digest project folder in your coding agent.",
+        "Open the extracted Video Flow project folder in your coding agent.",
       customizationStepReplace:
         "Replace [PROVIDER] and [MODEL] with the service and model you want to use.",
       customizationStepKeys:
@@ -48,7 +48,7 @@ const YTD_OPTIONS = (() => {
       customizationReminder:
         "Before copying, replace [PROVIDER] and [MODEL] with the provider and model you want to use.",
       customizationPrompt:
-        "Customize this local Video Digest workspace to use [PROVIDER] with [MODEL]. Work only in the current workspace. Before editing, verify that it contains manifest.json and that the manifest name is Video Digest. If verification fails, stop and ask me to open the extracted Video Digest project folder in my coding agent. Do not search other folders, edit a guessed copy, assume an installation path, or claim Chrome can reveal the absolute OS source path. Update the provider's API endpoint, request format, and minimum Chrome host permissions. Preserve bring-your-own-key and local Chrome storage. Never put API keys in source code, commits, logs, screenshots, this prompt, or chat; after the code is ready, tell me where to enter the key myself. Keep the current OpenAI-compatible request code isolated from the new provider's request fields and retry behavior. Handle provider-specific rules separately so one provider does not affect another. Update README.md, README.zh-CN.md, PRIVACY.md, SECURITY.md, and tests. Run npm test, npm run check, and npm run package. Then explain how to reload the unpacked extension and test it on a real YouTube or Bilibili video.",
+        "Customize this local Video Flow workspace to use [PROVIDER] with [MODEL]. Work only in the current workspace. Before editing, verify that it contains manifest.json and that the manifest name is Video Flow. If verification fails, stop and ask me to open the extracted Video Flow project folder in my coding agent. Do not search other folders, edit a guessed copy, assume an installation path, or claim Chrome can reveal the absolute OS source path. Update the provider's API endpoint, request format, and minimum Chrome host permissions. Preserve bring-your-own-key and local Chrome storage. Never put API keys in source code, commits, logs, screenshots, this prompt, or chat; after the code is ready, tell me where to enter the key myself. Keep the current OpenAI-compatible request code isolated from the new provider's request fields and retry behavior. Handle provider-specific rules separately so one provider does not affect another. Update README.md, README.zh-CN.md, PRIVACY.md, SECURITY.md, and tests. Run npm test, npm run check, and npm run package. Then explain how to reload the unpacked extension and test it on a real YouTube or Bilibili video.",
       copyCustomizationPrompt: "Copy edited prompt",
       localData: "Local data",
       localDataHelp:
@@ -71,7 +71,7 @@ const YTD_OPTIONS = (() => {
       modelsInvalidKey: "The API token was rejected. Check it and try again.",
       modelsNone: "No models were returned. Type a model name instead.",
       modelNotListed: ({ model }) => `Saved model "${model}" is not in the list.`,
-      saved: "Saved. Reopen Video Digest to use these settings.",
+      saved: "Saved. Reopen Video Flow to use these settings.",
       saveFailed: "Could not save settings. Please try again.",
       copying: "Copying…",
       promptCopied: "Edited prompt copied.",
@@ -82,12 +82,12 @@ const YTD_OPTIONS = (() => {
       notesDeleted: "Deleted all saved notes.",
       resetConfirm:
         "Delete API keys, cached digests, translations, and saved notes from this Chrome profile?",
-      allDataDeleted: "All Video Digest data was deleted.",
+      allDataDeleted: "All Video Flow data was deleted.",
       settingsLoadFailed:
         "Could not load saved settings. You can still preview this page.",
     },
     "zh-CN": {
-      pageTitle: "Video Digest 设置",
+      pageTitle: "Video Flow 设置",
       languageGroupLabel: "界面语言",
       heading: "使用你自己的 API 密钥",
       lede:
@@ -117,7 +117,7 @@ const YTD_OPTIONS = (() => {
       agentBadge: "可交给编程 Agent",
       customizationIntro: "你可以直接编辑提示词。复制前完成以下三步：",
       customizationStepFolder:
-        "在编程 Agent 中打开 Video Digest 解压后的项目文件夹。",
+        "在编程 Agent 中打开 Video Flow 解压后的项目文件夹。",
       customizationStepReplace:
         "把 [PROVIDER] 和 [MODEL] 替换成你想使用的服务和模型。",
       customizationStepKeys:
@@ -127,7 +127,7 @@ const YTD_OPTIONS = (() => {
       customizationReminder:
         "复制前，请先把 [PROVIDER] 和 [MODEL] 替换成你想使用的服务和模型。",
       customizationPrompt:
-        "请把当前本地 Video Digest 工作区改为使用 [PROVIDER] 提供的 [MODEL]。只在当前工作区中操作。编辑前，先确认其中包含 manifest.json，且 manifest 中的 name 是 Video Digest。如果验证失败，请停止，并让我在编程 Agent 中打开 Video Digest 解压后的项目文件夹。不要搜索其他文件夹，不要编辑猜测的副本，不要假设安装路径，也不要声称 Chrome 可以显示操作系统中的绝对源码路径。更新该服务的 API endpoint、请求格式和最少的 Chrome host permissions。保留用户自带密钥模式和 Chrome 本地存储。不要把 API 密钥写入源代码、提交记录、日志、截图、这段提示词或聊天；代码准备好后，请告诉我应该在哪里自行填写密钥。现有的 OpenAI 兼容请求代码要与新服务的请求参数和重试逻辑分开。新服务的专属规则请单独处理，避免相互影响。更新 README.md、README.zh-CN.md、PRIVACY.md、SECURITY.md 和测试。运行 npm test、npm run check 和 npm run package。最后，说明如何重新加载已解压的扩展，并在真实 YouTube 或 Bilibili 视频上测试。",
+        "请把当前本地 Video Flow 工作区改为使用 [PROVIDER] 提供的 [MODEL]。只在当前工作区中操作。编辑前，先确认其中包含 manifest.json，且 manifest 中的 name 是 Video Flow。如果验证失败，请停止，并让我在编程 Agent 中打开 Video Flow 解压后的项目文件夹。不要搜索其他文件夹，不要编辑猜测的副本，不要假设安装路径，也不要声称 Chrome 可以显示操作系统中的绝对源码路径。更新该服务的 API endpoint、请求格式和最少的 Chrome host permissions。保留用户自带密钥模式和 Chrome 本地存储。不要把 API 密钥写入源代码、提交记录、日志、截图、这段提示词或聊天；代码准备好后，请告诉我应该在哪里自行填写密钥。现有的 OpenAI 兼容请求代码要与新服务的请求参数和重试逻辑分开。新服务的专属规则请单独处理，避免相互影响。更新 README.md、README.zh-CN.md、PRIVACY.md、SECURITY.md 和测试。运行 npm test、npm run check 和 npm run package。最后，说明如何重新加载已解压的扩展，并在真实 YouTube 或 Bilibili 视频上测试。",
       copyCustomizationPrompt: "复制编辑后的提示词",
       localData: "本地数据",
       localDataHelp:
@@ -149,7 +149,7 @@ const YTD_OPTIONS = (() => {
       modelsInvalidKey: "API 令牌被拒绝，请检查后重试。",
       modelsNone: "没有返回任何模型，请手动填写模型名称。",
       modelNotListed: ({ model }) => `已保存的模型“${model}”不在列表中。`,
-      saved: "已保存。请重新打开 Video Digest 以使用这些设置。",
+      saved: "已保存。请重新打开 Video Flow 以使用这些设置。",
       saveFailed: "无法保存设置，请重试。",
       copying: "正在复制…",
       promptCopied: "已复制编辑后的提示词。",
@@ -158,7 +158,7 @@ const YTD_OPTIONS = (() => {
       notesDeleted: "已删除全部已保存的笔记。",
       resetConfirm:
         "要从当前 Chrome 个人资料中删除 API 密钥、缓存摘要、翻译和已保存的笔记吗？",
-      allDataDeleted: "已删除全部 Video Digest 数据。",
+      allDataDeleted: "已删除全部 Video Flow 数据。",
       settingsLoadFailed: "无法加载已保存的设置，但你仍可预览此页面。",
     },
   };

@@ -198,8 +198,8 @@
       makeButton(
         DIGEST_BUTTON_ID,
         "Digest",
-        "Open the Video Digest side panel",
-        "#fb7299",
+        "Open the Video Flow side panel",
+        "#d43366",
         !toolbar,
         openSidePanel,
       ),
@@ -234,15 +234,15 @@
     toast.id = TOAST_ID;
     toast.style.cssText =
       "position:fixed;bottom:20px;right:20px;z-index:999999;background:#fff;" +
-      "border:1px solid #e3e5e7;border-radius:12px;padding:14px 18px;" +
-      "max-width:340px;box-shadow:0 12px 32px rgba(0,0,0,.2);color:#18191c;" +
+      "border:1px solid #ece4e7;border-radius:12px;padding:14px 18px;" +
+      "max-width:340px;box-shadow:0 12px 32px rgba(0,0,0,.2);color:#2b2629;" +
       "font:13px/1.55 system-ui,-apple-system,'Segoe UI',sans-serif;";
 
     const heading = document.createElement("div");
-    heading.style.cssText = "font-weight:700;margin-bottom:4px;color:#fb7299;";
+    heading.style.cssText = "font-weight:700;margin-bottom:4px;color:#c9385f;";
     heading.textContent = "Note saved";
     const meta = document.createElement("div");
-    meta.style.cssText = "font-size:12px;color:#61666d;margin-bottom:6px;";
+    meta.style.cssText = "font-size:12px;color:#6e6569;margin-bottom:6px;";
     meta.textContent = `${note.timestamp} ${note.videoTitle || ""}`.trim();
     const body = document.createElement("div");
     body.textContent = note.text || "";

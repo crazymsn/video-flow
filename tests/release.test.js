@@ -49,14 +49,14 @@ test("release copy documents current scope without em dashes", () => {
   assert.doesNotMatch(manifest.description, /—/);
   assert.doesNotMatch(packageJson.description, /—/);
 
-  assert.equal(manifest.name, "Video Digest");
-  assert.equal(packageJson.name, "video-digest");
-  assert.match(read("scripts/package-extension.sh"), /video-digest-v\$version\.zip/);
+  assert.equal(manifest.name, "Video Flow");
+  assert.equal(packageJson.name, "video-flow");
+  assert.match(read("scripts/package-extension.sh"), /video-flow-v\$version\.zip/);
   assert.doesNotMatch(
     [readme, chineseReadme, read("PRIVACY.md"), read("SECURITY.md")].join("\n"),
     /\bYT Digest\b/,
   );
-  assert.match(readme, /^# Video Digest$/m);
+  assert.match(readme, /^# Video Flow$/m);
   assert.match(
     readme,
     /Turn every YouTube and Bilibili video into a resource for deep learning\./,
@@ -65,7 +65,7 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(readme, /^## Install with your coding agent$/m);
   assert.match(
     readme,
-    /permanent folder I choose[\s\S]*tell me its exact full path[\s\S]*If I need a suggestion during this first installation[\s\S]*`~\/Documents\/video-digest`[\s\S]*`%USERPROFILE%\\Documents\\video-digest`[\s\S]*do not assume either path/,
+    /permanent folder I choose[\s\S]*tell me its exact full path[\s\S]*If I need a suggestion during this first installation[\s\S]*`~\/Documents\/video-flow`[\s\S]*`%USERPROFILE%\\Documents\\video-flow`[\s\S]*do not assume either path/,
   );
   assert.match(
     readme,
@@ -81,12 +81,12 @@ test("release copy documents current scope without em dashes", () => {
   );
   assert.match(readme, /upstream issues and pull requests are not accepted/i);
   assert.doesNotMatch(readme, /^## Contributing$/m);
-  assert.match(chineseReadme, /^# Video Digest$/m);
+  assert.match(chineseReadme, /^# Video Flow$/m);
   assert.match(chineseReadme, /把每个 YouTube 和 Bilibili 视频变成一份可以深入学习的资料/);
   assert.match(chineseReadme, /^## 让你的编程 Agent 帮你安装$/m);
   assert.match(
     chineseReadme,
-    /我选择的长期保留文件夹[\s\S]*告诉我准确的完整路径[\s\S]*第一次安装时需要位置建议[\s\S]*`~\/Documents\/video-digest`[\s\S]*`%USERPROFILE%\\Documents\\video-digest`[\s\S]*不要假设我一定使用这些路径/,
+    /我选择的长期保留文件夹[\s\S]*告诉我准确的完整路径[\s\S]*第一次安装时需要位置建议[\s\S]*`~\/Documents\/video-flow`[\s\S]*`%USERPROFILE%\\Documents\\video-flow`[\s\S]*不要假设我一定使用这些路径/,
   );
   assert.match(
     chineseReadme,
@@ -153,14 +153,14 @@ test("release copy documents current scope without em dashes", () => {
   );
   assert.match(
     optionsPage,
-    /class="customization-steps"[\s\S]*Open the extracted Video Digest project folder in your coding[\s\S]*Replace \[PROVIDER\] and \[MODEL\][\s\S]*Never include API keys[\s\S]*<\/ol>/,
+    /class="customization-steps"[\s\S]*Open the extracted Video Flow project folder in your coding[\s\S]*Replace \[PROVIDER\] and \[MODEL\][\s\S]*Never include API keys[\s\S]*<\/ol>/,
   );
   assert.match(
     optionsPage,
     /class="prompt-reminder"[\s\S]*Before copying, replace \[PROVIDER\] and \[MODEL\]/,
   );
-  assert.doesNotMatch(optionsPage, /~\/Documents\/video-digest/);
-  assert.doesNotMatch(optionsPage, /%USERPROFILE%\\Documents\\video-digest/);
+  assert.doesNotMatch(optionsPage, /~\/Documents\/video-flow/);
+  assert.doesNotMatch(optionsPage, /%USERPROFILE%\\Documents\\video-flow/);
   assert.match(optionsPage, /id="copyCustomizationPromptBtn"/);
   assert.match(optionsStyles, /\.customization-summary:hover\s*\{/);
   assert.match(optionsStyles, /\.customization-summary:focus-visible\s*\{/);
@@ -170,7 +170,7 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(optionsScript, /migration\.migrated[\s\S]*storage\.set/);
   assert.doesNotMatch(optionsScript, /deepseek/i);
 
-  const customizationPrompt = `Customize this local Video Digest workspace to use [PROVIDER] with [MODEL]. Work only in the current workspace. Before editing, verify that it contains manifest.json and that the manifest name is Video Digest. If verification fails, stop and ask me to open the extracted Video Digest project folder in my coding agent. Do not search other folders, edit a guessed copy, assume an installation path, or claim Chrome can reveal the absolute OS source path. Update the provider's API endpoint, request format, and minimum Chrome host permissions. Preserve bring-your-own-key and local Chrome storage. Never put API keys in source code, commits, logs, screenshots, this prompt, or chat; after the code is ready, tell me where to enter the key myself. Keep the current OpenAI-compatible request code isolated from the new provider's request fields and retry behavior. Handle provider-specific rules separately so one provider does not affect another. Update README.md, README.zh-CN.md, PRIVACY.md, SECURITY.md, and tests. Run npm test, npm run check, and npm run package. Then explain how to reload the unpacked extension and test it on a real YouTube or Bilibili video.`;
+  const customizationPrompt = `Customize this local Video Flow workspace to use [PROVIDER] with [MODEL]. Work only in the current workspace. Before editing, verify that it contains manifest.json and that the manifest name is Video Flow. If verification fails, stop and ask me to open the extracted Video Flow project folder in my coding agent. Do not search other folders, edit a guessed copy, assume an installation path, or claim Chrome can reveal the absolute OS source path. Update the provider's API endpoint, request format, and minimum Chrome host permissions. Preserve bring-your-own-key and local Chrome storage. Never put API keys in source code, commits, logs, screenshots, this prompt, or chat; after the code is ready, tell me where to enter the key myself. Keep the current OpenAI-compatible request code isolated from the new provider's request fields and retry behavior. Handle provider-specific rules separately so one provider does not affect another. Update README.md, README.zh-CN.md, PRIVACY.md, SECURITY.md, and tests. Run npm test, npm run check, and npm run package. Then explain how to reload the unpacked extension and test it on a real YouTube or Bilibili video.`;
   assert.ok(optionsPage.includes(`>${customizationPrompt}</textarea>`));
   assert.doesNotMatch(customizationPrompt, /Documents|USERPROFILE/);
 
@@ -180,11 +180,11 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(readme, /vocabulary notebook/i);
   assert.match(
     readme,
-    /first open the exact Video Digest project folder that Chrome loaded through \*\*Load unpacked\*\* in your coding agent/,
+    /first open the exact Video Flow project folder that Chrome loaded through \*\*Load unpacked\*\* in your coding agent/,
   );
   assert.match(
     chineseReadme,
-    /先在编程 Agent 中打开 Chrome 通过“加载已解压的扩展程序”使用的那个准确的 Video Digest 项目文件夹/,
+    /先在编程 Agent 中打开 Chrome 通过“加载已解压的扩展程序”使用的那个准确的 Video Flow 项目文件夹/,
   );
 
   const publishedDocs = [

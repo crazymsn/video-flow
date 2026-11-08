@@ -30,8 +30,8 @@ function createLocalStorage() {
 }
 
 test("Settings copy covers English and Simplified Chinese", () => {
-  assert.equal(options.translate("en", "pageTitle"), "Video Digest Settings");
-  assert.equal(options.translate("zh-CN", "pageTitle"), "Video Digest 设置");
+  assert.equal(options.translate("en", "pageTitle"), "Video Flow Settings");
+  assert.equal(options.translate("zh-CN", "pageTitle"), "Video Flow 设置");
   assert.equal(options.translate("en", "saveSettings"), "Save settings");
   assert.equal(options.translate("zh-CN", "saveSettings"), "保存设置");
   assert.equal(
@@ -137,14 +137,14 @@ test("customization guidance is concise and has a visible placeholder reminder",
   );
   assert.equal(
     options.translate("en", "customizationStepFolder"),
-    "Open the extracted Video Digest project folder in your coding agent.",
+    "Open the extracted Video Flow project folder in your coding agent.",
   );
   assert.equal(
     options.translate("zh-CN", "customizationStepFolder"),
-    "在编程 Agent 中打开 Video Digest 解压后的项目文件夹。",
+    "在编程 Agent 中打开 Video Flow 解压后的项目文件夹。",
   );
-  assert.doesNotMatch(html, /~\/Documents\/video-digest/);
-  assert.doesNotMatch(html, /%USERPROFILE%\\Documents\\video-digest/);
+  assert.doesNotMatch(html, /~\/Documents\/video-flow/);
+  assert.doesNotMatch(html, /%USERPROFILE%\\Documents\\video-flow/);
 });
 
 test("customization prompt switches languages and preserves technical values", () => {
@@ -157,7 +157,7 @@ test("customization prompt switches languages and preserves technical values", (
   assert.match(html, /https:\/\/dash\.supadata\.ai\/auth\/sign-up/);
   assert.doesNotMatch(html, /deepseek/i);
   assert.ok(html.includes(`>${englishPrompt}</textarea>`));
-  assert.match(chinesePrompt, /^请把当前本地 Video Digest 工作区改为使用/);
+  assert.match(chinesePrompt, /^请把当前本地 Video Flow 工作区改为使用/);
   assert.notEqual(chinesePrompt, englishPrompt);
   assert.match(
     englishPrompt,
