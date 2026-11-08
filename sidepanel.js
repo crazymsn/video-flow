@@ -562,6 +562,7 @@ async function startDigest(videoId, videoUrl) {
     transcriptScrollObserver = null;
     resetTranscriptSearch();
     lastTranscriptScrollTop = 0;
+    resetOverviewPanel();
     pendingTranscriptViewState = await loadTranscriptViewState(videoId);
     // An unseen video always starts in Original, so opening it never spends
     // translation tokens. A saved choice is restored only for this video.
@@ -625,6 +626,7 @@ async function startDigest(videoId, videoUrl) {
     // Setup explain feature
     setupExplainFeature();
     if (currentTranscriptMode !== "original") translateTranscript();
+    resumeOverviewIfVisible();
     return;
   }
 
@@ -690,6 +692,7 @@ async function startDigest(videoId, videoUrl) {
   // Setup explain feature for text selection
   setupExplainFeature();
   if (currentTranscriptMode !== "original") translateTranscript();
+  resumeOverviewIfVisible();
 
   // Save transcript to cache (without analysis)
   await saveToCache(videoId);
@@ -1504,6 +1507,35 @@ function buildTimestampedTranscriptFromCache() {
     .join("\n");
 }
 
+/**
+ * Clears the Overview tab back to its empty placeholders. Without this, a
+ * video change leaves the previous video's chapters, or its "Loading..." text,
+ * on screen even though that request no longer belongs to the current video.
+ */
+function resetOverviewPanel() {
+  const chapterList = document.getElementById("chapterList");
+  const quotesList = document.getElementById("quotesList");
+  if (chapterList) {
+    chapterList.innerHTML =
+      '<li class="chapter-item" style="color: var(--text-muted); cursor: default; border-color: var(--border);">Chapters will appear here</li>';
+  }
+  if (quotesList) {
+    quotesList.innerHTML =
+      '<div class="quote-item" style="color: var(--text-muted); border-left-color: var(--border); cursor: default;"><div class="quote-text" style="font-style: normal">Quotes will be extracted when you view this tab...</div></div>';
+  }
+}
+
+/**
+ * Overview analysis normally starts when the user opens the tab. If the panel
+ * switched videos while Overview was already open, no tab click will happen,
+ * so start the analysis for the new video here.
+ */
+function resumeOverviewIfVisible() {
+  if (resultTabIsActive("overview") && !currentAnalysis && !isAnalysisLoading) {
+    void triggerAnalysis();
+  }
+}
+
 function renderAnalysisError(message) {
   const safeMessage = escapeHtml(message || "Unable to load the overview.");
   const chapterList = document.getElementById("chapterList");
@@ -1528,6 +1560,9 @@ async function triggerAnalysis() {
   }
 
   isAnalysisLoading = true;
+  // startDigest() resets the analysis state when the video changes. A reply
+  // that arrives after that belongs to the old video and must be dropped.
+  const requestVideoId = currentVideoId;
 
   // Show loading indicators in the Overview tab
   const chapterList = document.getElementById("chapterList");
@@ -1550,6 +1585,8 @@ async function triggerAnalysis() {
       videoDuration: currentVideoDuration,
     });
 
+    if (requestVideoId !== currentVideoId) return;
+
     if (!analysisResult.success) {
       renderAnalysisError(
         `Overview failed: ${analysisResult.error || "Unknown error"}`,
@@ -1566,6 +1603,7 @@ async function triggerAnalysis() {
     await saveToCache(currentVideoId);
   } catch (error) {
     console.error("[Video Flow Panel] Analysis error:", error);
+    if (requestVideoId !== currentVideoId) return;
     renderAnalysisError(`Overview error: ${error.message}`);
   }
 
@@ -2098,12 +2136,18 @@ async function updateCache() {
  * Loads and renders notes from storage.
  * @param {string|null} videoId - Filter by video ID, or null for all notes
  */
+let notesRequestId = 0;
+
 async function loadNotes(videoId) {
+  // Only the newest request may render. Switching "This Video" and "All Notes"
+  // quickly, or changing video, can otherwise let a slow older reply win.
+  const requestId = ++notesRequestId;
   try {
     const result = await chrome.runtime.sendMessage({
       action: "getNotes",
       videoId: videoId,
     });
+    if (requestId !== notesRequestId) return;
 
     if (result.success) {
       currentNotes = result.notes || [];
@@ -2114,6 +2158,7 @@ async function loadNotes(videoId) {
     }
   } catch (error) {
     console.error("[Video Flow Panel] Load notes error:", error);
+    if (requestId !== notesRequestId) return;
     renderNotesError(error.message);
   }
 }
