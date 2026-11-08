@@ -35,7 +35,7 @@ Video Flow 是一个需要自行提供 API Key 的开源项目，通过 GitHub �
 
 你不需要看懂代码，也不需要会使用命令行。把下面这段话发送给你的编程 Agent：
 
-> 请把这个项目下载或克隆到我选择的长期保留文件夹，告诉我准确的完整路径，并让 Chrome“加载已解压的扩展程序”使用同一个文件夹。如果我在第一次安装时需要位置建议，可以推荐 macOS 或 Linux 上的 `~/Documents/video-flow`，或 Windows 上的 `%USERPROFILE%\Documents\video-flow`，但不要假设我一定使用这些路径。请用简单易懂的语言一步一步指导我完成安装和配置。https://github.com/crazymsn/video-digest
+> 请把这个项目下载或克隆到我选择的长期保留文件夹，告诉我准确的完整路径，并让 Chrome“加载已解压的扩展程序”使用同一个文件夹。如果我在第一次安装时需要位置建议，可以推荐 macOS 或 Linux 上的 `~/Documents/video-flow`，或 Windows 上的 `%USERPROFILE%\Documents\video-flow`，但不要假设我一定使用这些路径。请用简单易懂的语言一步一步指导我完成安装和配置。https://github.com/crazymsn/video-flow
 
 你的 Agent 应该帮你：
 
@@ -53,7 +53,7 @@ Video Flow 是一个需要自行提供 API Key 的开源项目，通过 GitHub �
 
 如果你想自己操作：
 
-1. 打开 [github.com/crazymsn/video-digest](https://github.com/crazymsn/video-digest)。
+1. 打开 [github.com/crazymsn/video-flow](https://github.com/crazymsn/video-flow)。
 2. 点击 **Code**，再选择 **Download ZIP**。
 3. 选择一个长期保留的文件夹，并把项目解压到这里。可选建议是 macOS 或 Linux 上的 `~/Documents/video-flow`，或 Windows 上的 `%USERPROFILE%\Documents\video-flow`。你也可以使用其他文件夹。
 4. 在 Chrome 地址栏打开 `chrome://extensions`。
@@ -177,7 +177,7 @@ Video Flow 没有账号系统、广告、分析统计或行为追踪。Supadata�
 
 ## 常见问题
 
-### YouTube 或 Bilibili 视频页面没有显示 Digest 按钮
+### YouTube 或 Bilibili 视频页面没有显示 Flow 按钮
 
 - 在 `chrome://extensions` 中找到 Video Flow，点击“重新加载”，然后刷新视频页面。
 - 确认当前页面是标准 `https://www.youtube.com/watch?...` 页面或 `https://www.bilibili.com/video/BV...` 页面，而不是 Shorts、嵌入页面或直播页面。

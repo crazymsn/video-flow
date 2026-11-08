@@ -243,6 +243,29 @@ button {
   gap: 12px;
 }
 
+.brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 28px;
+  color: var(--text);
+}
+
+.brand-mark {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  object-fit: contain;
+}
+
+.brand-name {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: -0.1px;
+}
+
 .header-top .video-info {
   min-width: 0;
   flex: 1;
@@ -438,8 +461,8 @@ button {
   letter-spacing: 0.2px;
   padding: 5px 12px;
   border-radius: var(--r-pill);
-  color: var(--sage);
-  background: var(--sage-dim);
+  color: var(--accent-text);
+  background: var(--accent-dim);
 }
 
 /* ============================================================

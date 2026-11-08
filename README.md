@@ -33,7 +33,7 @@ Video Flow is a bring-your-own-key project installed locally from GitHub. It is 
 
 You do not need to understand the code or use the command line. Send this message to your coding agent:
 
-> Download or clone this project into a permanent folder I choose, tell me its exact full path, and use that same folder for Chrome's Load unpacked step. If I need a suggestion during this first installation, offer `~/Documents/video-flow` on macOS or Linux, or `%USERPROFILE%\Documents\video-flow` on Windows, but do not assume either path. Walk me through installation and setup in simple terms. https://github.com/crazymsn/video-digest
+> Download or clone this project into a permanent folder I choose, tell me its exact full path, and use that same folder for Chrome's Load unpacked step. If I need a suggestion during this first installation, offer `~/Documents/video-flow` on macOS or Linux, or `%USERPROFILE%\Documents\video-flow` on Windows, but do not assume either path. Walk me through installation and setup in simple terms. https://github.com/crazymsn/video-flow
 
 Your agent should:
 
@@ -51,7 +51,7 @@ Never paste an API key into an AI chat, source file, screenshot, or public messa
 
 If you prefer to do it yourself:
 
-1. Open [github.com/crazymsn/video-digest](https://github.com/crazymsn/video-digest).
+1. Open [github.com/crazymsn/video-flow](https://github.com/crazymsn/video-flow).
 2. Choose **Code**, then **Download ZIP**.
 3. Choose a permanent folder and unzip the project there. Optional suggestions are `~/Documents/video-flow` on macOS or Linux, or `%USERPROFILE%\Documents\video-flow` on Windows. You may use a different folder.
 4. In Chrome, open `chrome://extensions`.
@@ -175,7 +175,7 @@ There is no Video Flow account system, advertising, analytics, or telemetry. Sup
 
 ## Troubleshooting
 
-### The Digest button is missing on a YouTube or Bilibili video
+### The Flow button is missing on a YouTube or Bilibili video
 
 - At `chrome://extensions`, find Video Flow and click **Reload**, then refresh the video tab.
 - Confirm that you are on a standard `https://www.youtube.com/watch?...` page or a `https://www.bilibili.com/video/BV...` page, not a Short, embed, or live page.

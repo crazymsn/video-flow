@@ -125,11 +125,11 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(chineseReadme, /dash\.supadata\.ai\/auth\/sign-up/i);
   assert.match(
     readme,
-    /^### The Digest button is missing on a YouTube or Bilibili video$/m,
+    /^### The Flow button is missing on a YouTube or Bilibili video$/m,
   );
   assert.match(
     chineseReadme,
-    /^### YouTube 或 Bilibili 视频页面没有显示 Digest 按钮$/m,
+    /^### YouTube 或 Bilibili 视频页面没有显示 Flow 按钮$/m,
   );
 
   const optionsPage = read("options.html");

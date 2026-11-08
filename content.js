@@ -232,7 +232,7 @@ function createDigestButton() {
   digestButton.id = "ytd-digest-button";
   digestButton.type = "button";
   digestButton.setAttribute("aria-label", "Open Video Flow");
-  digestButton.innerHTML = `<span class="ytd-digest-label">Digest</span>`;
+  digestButton.innerHTML = `<span class="ytd-digest-label">Flow</span>`;
 
   // Style the button — rounded pill in our brand accent, sized to sit
   // comfortably among YouTube's native action buttons.

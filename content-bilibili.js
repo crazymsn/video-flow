@@ -3,7 +3,7 @@
  *
  * Runs on bilibili.com/video/* and bilibili.com/list/* pages. It:
  * 1. Reports the current video (BV id, part, title, uploader, duration).
- * 2. Adds a "Digest" button and a "Note" button, and the "n" shortcut.
+ * 2. Adds a "Flow" button and a "Note" button, and the "n" shortcut.
  * 3. Seeks the player when the side panel asks it to.
  *
  * Bilibili renders its player with Vue. Touching the page before it settles can
@@ -183,7 +183,7 @@
       flash(
         document.getElementById(DIGEST_BUTTON_ID),
         "Use the toolbar icon",
-        "Digest",
+        "Flow",
       );
     }
   }
@@ -197,7 +197,7 @@
     host.appendChild(
       makeButton(
         DIGEST_BUTTON_ID,
-        "Digest",
+        "Flow",
         "Open the Video Flow side panel",
         "#d43366",
         !toolbar,

@@ -145,7 +145,7 @@ async function loadPromptSection(fileName, heading, variables = {}) {
     sectionStart,
     nextSection === -1 ? markdown.length : nextSection,
   );
-  const fenceMatch = section.match(/```(?:[A-Za-z0-9_-]+)?\n([\s\S]*?)\n```/);
+  const fenceMatch = section.match(/```(?:[A-Za-z0-9_-]+)?\r?\n([\s\S]*?)\r?\n```/);
   if (!fenceMatch) {
     throw new Error(`Prompt section not found: ${fileName}#${heading}`);
   }

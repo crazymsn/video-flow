@@ -22,7 +22,7 @@ if ((${#release_files[@]} == 0)); then
   exit 1
 fi
 
-version="$(node -e 'const m=require(process.argv[1]); process.stdout.write(m.version)' "$repo_root/manifest.json")"
+version="$(cd "$repo_root" && node -e 'const fs=require("fs"); process.stdout.write(JSON.parse(fs.readFileSync("manifest.json", "utf8")).version)')"
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
   printf 'Packaging failed: unsafe manifest version: %s\n' "$version" >&2
   exit 1
@@ -90,8 +90,13 @@ try {
 POWERSHELL
     file_list="$temporary_dir/release-files.txt"
     printf '%s\n' "${release_files[@]}" > "$file_list"
+    windows_powershell_script="$(cygpath -w "$powershell_script")"
+    windows_repo_root="$(cygpath -w "$repo_root")"
+    windows_temporary_zip="$(cygpath -w "$temporary_zip")"
+    windows_file_list="$(cygpath -w "$file_list")"
     powershell.exe -NoProfile -NonInteractive \
-      -File "$powershell_script" "$repo_root" "$temporary_zip" "$file_list"
+      -File "$windows_powershell_script" "$windows_repo_root" \
+      "$windows_temporary_zip" "$windows_file_list"
   else
     printf 'Packaging failed: zip or PowerShell is required\n' >&2
     exit 1

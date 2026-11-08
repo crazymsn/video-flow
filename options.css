@@ -181,15 +181,11 @@ header {
   text-transform: uppercase;
 }
 
-/* Brand tile, echoing the extension icon */
-header .eyebrow::before {
-  content: "";
-  flex: 0 0 auto;
+.settings-brand-mark {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-solid) 100%);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 38%, transparent);
+  flex: 0 0 22px;
+  object-fit: contain;
 }
 
 h1 {
