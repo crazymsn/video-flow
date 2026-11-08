@@ -468,9 +468,15 @@ const YTD_OPTIONS = (() => {
 
     function fillModelList(models, preferred) {
       aiModelSelect.replaceChildren();
-      const list = models.includes(preferred) || !preferred
-        ? models
-        : [preferred, ...models];
+      const usableModels = models.filter(
+        (model) => !settingsApi.isBlockedModel(model),
+      );
+      const safePreferred = settingsApi.isBlockedModel(preferred)
+        ? ""
+        : preferred;
+      const list = usableModels.includes(safePreferred) || !safePreferred
+        ? usableModels
+        : [safePreferred, ...usableModels];
       for (const model of list) {
         const option = doc.createElement("option");
         option.value = model;
@@ -478,8 +484,8 @@ const YTD_OPTIONS = (() => {
         aiModelSelect.append(option);
       }
       aiModelSelect.disabled = false;
-      aiModelSelect.value = preferred && list.includes(preferred)
-        ? preferred
+      aiModelSelect.value = safePreferred && list.includes(safePreferred)
+        ? safePreferred
         : list[0];
       setManualModelMode(false);
     }
