@@ -1641,6 +1641,29 @@ button {
   gap: 8px;
 }
 
+.analysis-retry-btn {
+  margin-top: 10px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--accent-solid);
+  color: var(--on-accent);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-ui);
+}
+
+.analysis-retry-btn:hover {
+  background: var(--accent-hover);
+}
+
+.analysis-retry-btn:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
 .note-action-btn {
   font-family: var(--font-body);
   font-weight: 600;

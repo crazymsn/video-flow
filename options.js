@@ -7,29 +7,20 @@ const YTD_OPTIONS = (() => {
     en: {
       pageTitle: "Video Flow Settings",
       languageGroupLabel: "Interface language",
-      heading: "Bring your own API keys",
-      lede:
-        "Keys stay in this Chrome profile and are sent only to Supadata (for YouTube) and the AI gateway. This open-source extension has no developer server or analytics.",
       transcriptProvider: "Transcript provider",
       supadataApiKeyLabel: "Supadata API key",
       supadataHelp: "Used to fetch timestamped YouTube subtitles. Bilibili videos need no key. ",
       supadataLink: "Create a Supadata account and key",
-      supadataHelpSuffix:
-        ". Supadata generates the key during onboarding.",
-      aiProvider: "AI provider",
-      providerSummaryLabel: "Supported AI provider",
-      providerBadge: "Fixed Base URL",
+      aiProvider:
+        '<a href="https://api.meding.site" target="_blank" rel="noreferrer">Enter your API token</a>',
       baseUrlLabel: "Base URL",
-      baseUrlHelp:
-        "The Base URL is fixed and cannot be changed. Your API token is sent only to this address.",
       aiApiKeyLabel: "API token",
-      aiApiKeyHelp: "Models load automatically after you enter the token.",
+      aiApiKeyHelp:
+        '<a href="https://api.meding.site" target="_blank" rel="noreferrer">Go to the API distribution site to create a token</a>, and models load automatically after you enter the token.',
       modelLabel: "Model",
       modelPlaceholder: "Enter your token to load models",
       refreshModels: "Refresh models",
       manualModelLabel: "Model name",
-      privacyNote:
-        "When you use AI features, the gateway at the Base URL receives the video transcript and relevant video context. Review its terms and pricing before saving.",
       saveSettings: "Save settings",
       localData: "Local data",
       localDataHelp:
@@ -37,8 +28,6 @@ const YTD_OPTIONS = (() => {
       clearCache: "Clear cached digests",
       deleteNotes: "Delete all notes",
       resetData: "Reset extension data",
-      footer:
-        'Read <a href="PRIVACY.md" target="_blank">PRIVACY.md</a> in the repository for the complete data-flow description.',
       migrationWarning:
         "Settings from an older version were reset. Your Supadata key was kept, but the old AI key was cleared. Enter an API token for the fixed gateway and choose a model.",
       saving: "Saving…",
@@ -49,6 +38,19 @@ const YTD_OPTIONS = (() => {
       modelsLoaded: ({ count }) =>
         `Loaded ${count} model${count === 1 ? "" : "s"}.`,
       modelsFailed: "Could not load models. Type a model name instead.",
+      testConnection: "Test connection",
+      connectionTesting: "Testing connection…",
+      connectionOk: ({ model, ms }) =>
+        `Connected. ${model} answered in ${ms} ms.`,
+      connectionNeedKey: "Enter your API token first.",
+      connectionNeedModel: "Choose a model first.",
+      connectionInvalidKey: "The API token was rejected. Check it and try again.",
+      connectionRateLimited: "The gateway is rate-limiting requests. Try again shortly.",
+      connectionTimeout: "The gateway did not answer in time. Try again.",
+      connectionNetwork: "Could not reach the gateway. Check your network.",
+      connectionUnexpected: "The gateway answered, but not with a chat reply.",
+      connectionFailed: ({ detail }) =>
+        detail ? `Connection failed: ${detail}` : "Connection failed.",
       modelsInvalidKey: "The API token was rejected. Check it and try again.",
       modelsNone: "No models were returned. Type a model name instead.",
       modelNotListed: ({ model }) => `Saved model "${model}" is not in the list.`,
@@ -66,27 +68,20 @@ const YTD_OPTIONS = (() => {
     "zh-CN": {
       pageTitle: "Video Flow 设置",
       languageGroupLabel: "界面语言",
-      heading: "使用你自己的 API 密钥",
-      lede:
-        "密钥仅保存在当前 Chrome 个人资料中，只会发送给 Supadata（仅 YouTube 使用）和 AI 网关。本开源扩展没有开发者服务器，也不使用分析服务。",
       transcriptProvider: "字幕服务",
       supadataApiKeyLabel: "Supadata API 密钥",
       supadataHelp: "用于获取带时间戳的 YouTube 字幕。Bilibili 视频不需要此密钥。",
       supadataLink: "创建 Supadata 账号并获取密钥",
-      supadataHelpSuffix: "。Supadata 会在引导流程中生成密钥。",
-      aiProvider: "AI 服务",
-      providerSummaryLabel: "支持的 AI 服务",
-      providerBadge: "Base URL 已固定",
+      aiProvider:
+        '<a href="https://api.meding.site" target="_blank" rel="noreferrer">填入 API 密钥</a>',
       baseUrlLabel: "Base URL",
-      baseUrlHelp: "Base URL 已固定，不能修改。你的 API 令牌只会发送到这个地址。",
-      aiApiKeyLabel: "API 令牌",
-      aiApiKeyHelp: "填写令牌后会自动获取模型列表。",
+      aiApiKeyLabel: "API 密钥",
+      aiApiKeyHelp:
+        '<a href="https://api.meding.site" target="_blank" rel="noreferrer">前往 API 分发站创建密钥</a>，填写密钥后会自动获取模型列表',
       modelLabel: "模型",
-      modelPlaceholder: "填写令牌后自动加载模型",
+      modelPlaceholder: "填写密钥后自动加载模型",
       refreshModels: "刷新模型",
       manualModelLabel: "模型名称",
-      privacyNote:
-        "使用 AI 功能时，Base URL 对应的网关会收到视频字幕及相关视频上下文。保存前请查看其服务条款和价格。",
       saveSettings: "保存设置",
       localData: "本地数据",
       localDataHelp:
@@ -94,18 +89,28 @@ const YTD_OPTIONS = (() => {
       clearCache: "清除缓存的摘要",
       deleteNotes: "删除全部笔记",
       resetData: "重置扩展数据",
-      footer:
-        '完整数据流说明请参阅仓库中的 <a href="PRIVACY.md" target="_blank">PRIVACY.md</a>。',
       migrationWarning:
-        "旧版本的设置已重置。Supadata 密钥已保留，旧的 AI 密钥已清除。请输入固定网关的 API 令牌并选择模型。",
+        "旧版本的设置已重置。Supadata 密钥已保留，旧的 AI 密钥已清除。请输入固定网关的 API 密钥并选择模型。",
       saving: "正在保存…",
       addSupadataKey: "请添加 Supadata API 密钥。",
-      addAiKey: "请添加 API 令牌。",
+      addAiKey: "请添加 API 密钥。",
       addAiModel: "请选择模型。",
       modelsLoading: "正在加载模型...",
       modelsLoaded: ({ count }) => `已加载 ${count} 个模型。`,
       modelsFailed: "无法加载模型，请手动填写模型名称。",
-      modelsInvalidKey: "API 令牌被拒绝，请检查后重试。",
+      testConnection: "连通性测试",
+      connectionTesting: "正在测试连接…",
+      connectionOk: ({ model, ms }) => `连接成功。${model} 在 ${ms} 毫秒内响应。`,
+      connectionNeedKey: "请先填写 API 密钥。",
+      connectionNeedModel: "请先选择模型。",
+      connectionInvalidKey: "API 密钥被拒绝，请检查后重试。",
+      connectionRateLimited: "网关正在限流，请稍后重试。",
+      connectionTimeout: "网关响应超时，请重试。",
+      connectionNetwork: "无法连接到网关，请检查网络。",
+      connectionUnexpected: "网关有响应，但返回的不是对话结果。",
+      connectionFailed: ({ detail }) =>
+        detail ? `连接失败：${detail}` : "连接失败。",
+      modelsInvalidKey: "API 密钥被拒绝，请检查后重试。",
       modelsNone: "没有返回任何模型，请手动填写模型名称。",
       modelNotListed: ({ model }) => `已保存的模型“${model}”不在列表中。`,
       saved: "已保存。请重新打开 Video Flow 以使用这些设置。",
@@ -295,6 +300,27 @@ const YTD_OPTIONS = (() => {
       renderStatus(element);
     }
 
+    // The save row shows its outcome through data-state: idle, saving, saved
+    // or error. CSS turns that into the spinner, check mark and status color.
+    const formActions = doc.getElementById("formActions");
+    const saveBtn = doc.getElementById("saveBtn");
+    let saveStateTimer = null;
+
+    function setSaveState(state) {
+      clearTimeout(saveStateTimer);
+      if (formActions) formActions.dataset.state = state;
+      if (saveBtn) saveBtn.disabled = state === "saving";
+      // Return the button to its resting look once the result has been seen.
+      // The status sentence stays until the next save.
+      if (state === "saved") {
+        saveStateTimer = setTimeout(() => {
+          if (formActions && formActions.dataset.state === "saved") {
+            formActions.dataset.state = "idle";
+          }
+        }, 2200);
+      }
+    }
+
     function applyLanguage(language) {
       currentLanguage = normalizeLanguage(language);
       doc.documentElement.lang = currentLanguage;
@@ -400,6 +426,7 @@ const YTD_OPTIONS = (() => {
 
       if (reply?.success && reply.models?.length) {
         fillModelList(reply.models, preferred);
+        resetConnectionResult();
         setStatus(modelStatus, "modelsLoaded", { count: reply.models.length });
         if (preferred && !reply.models.includes(preferred)) {
           setStatus(modelStatus, "modelNotListed", { model: preferred });
@@ -455,6 +482,7 @@ const YTD_OPTIONS = (() => {
 
     async function saveSettings(event) {
       event.preventDefault();
+      setSaveState("saving");
       setStatus(saveStatus, "saving");
 
       const settings = settingsApi.normalize({
@@ -466,18 +494,22 @@ const YTD_OPTIONS = (() => {
       // The Supadata key is optional: Bilibili videos work without it, and
       // YouTube videos ask for it when they need it.
       if (!settings.aiApiKey) {
+        setSaveState("error");
         setStatus(saveStatus, "addAiKey");
         return;
       }
       if (!settings.aiModel) {
+        setSaveState("error");
         setStatus(saveStatus, "addAiModel");
         return;
       }
 
       try {
         await storage.set({ [settingsApi.STORAGE_KEY]: settings });
+        setSaveState("saved");
         setStatus(saveStatus, "saved");
       } catch (_error) {
+        setSaveState("error");
         setStatus(saveStatus, "saveFailed");
       }
     }
@@ -506,8 +538,100 @@ const YTD_OPTIONS = (() => {
       setStatus(dataStatus, "allDataDeleted");
     }
 
+    // ---- Connection test --------------------------------------------
+    // One tiny chat request with the token and model on screen, so a bad pair
+    // is found before saving. Elements are optional so older markup still works.
+    const testConnectionBtn = doc.getElementById("testConnectionBtn");
+    const connectionStatus = doc.getElementById("connectionStatus");
+    let connectionRequestId = 0;
+
+    function setConnectionState(state) {
+      if (connectionStatus) connectionStatus.dataset.state = state;
+      if (testConnectionBtn) {
+        testConnectionBtn.dataset.state = state;
+        testConnectionBtn.disabled = state === "testing" || !canTestConnection();
+      }
+    }
+
+    function canTestConnection() {
+      return Boolean(aiApiKeyInput.value.trim() && selectedModel());
+    }
+
+    // A result belongs to the token and model that produced it. Editing either
+    // one clears it, so a stale green message never describes new input.
+    function resetConnectionResult() {
+      connectionRequestId += 1;
+      if (connectionStatus) {
+        connectionStatus.textContent = "";
+        statusStates.delete(connectionStatus);
+      }
+      setConnectionState("idle");
+    }
+
+    function connectionFailureKey(reply) {
+      switch (reply?.error) {
+        case "NO_AI_KEY":
+          return ["connectionNeedKey", {}];
+        case "NO_AI_MODEL":
+          return ["connectionNeedModel", {}];
+        case "INVALID_AI_KEY":
+          return ["connectionInvalidKey", {}];
+        case "RATE_LIMITED":
+          return ["connectionRateLimited", {}];
+        case "TIMEOUT":
+          return ["connectionTimeout", {}];
+        case "NETWORK":
+          return ["connectionNetwork", {}];
+        case "UNEXPECTED_RESPONSE":
+          return ["connectionUnexpected", {}];
+        default:
+          return ["connectionFailed", { detail: reply?.message || "" }];
+      }
+    }
+
+    async function testConnection() {
+      if (!connectionStatus || !canTestConnection()) {
+        resetConnectionResult();
+        return;
+      }
+      const requestId = (connectionRequestId += 1);
+      setConnectionState("testing");
+      setStatus(connectionStatus, "connectionTesting");
+
+      let reply = null;
+      try {
+        reply = await root.chrome?.runtime?.sendMessage({
+          action: "testConnection",
+          apiKey: aiApiKeyInput.value.trim(),
+          model: selectedModel(),
+        });
+      } catch (_error) {
+        reply = { success: false, error: "NETWORK" };
+      }
+      // The token or model changed while the request was in flight.
+      if (requestId !== connectionRequestId) return;
+
+      if (reply?.success) {
+        setConnectionState("ok");
+        setStatus(connectionStatus, "connectionOk", {
+          model: reply.model,
+          ms: reply.latencyMs,
+        });
+        return;
+      }
+      setConnectionState("error");
+      const [key, params] = connectionFailureKey(reply);
+      setStatus(connectionStatus, key, params);
+    }
+
     form.addEventListener("submit", saveSettings);
-    aiApiKeyInput.addEventListener("input", scheduleModelLoad);
+    aiApiKeyInput.addEventListener("input", () => {
+      resetConnectionResult();
+      scheduleModelLoad();
+    });
+    aiModelSelect.addEventListener?.("change", resetConnectionResult);
+    aiModelManualInput.addEventListener?.("input", resetConnectionResult);
+    testConnectionBtn?.addEventListener("click", () => void testConnection());
     refreshModelsBtn.addEventListener("click", () => {
       clearTimeout(modelDebounce);
       void loadModels();

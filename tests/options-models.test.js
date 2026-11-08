@@ -57,6 +57,10 @@ function createDom() {
     "modelStatus",
     "supadataApiKey",
     "saveStatus",
+    "formActions",
+    "testConnectionBtn",
+    "connectionStatus",
+    "saveBtn",
     "dataStatus",
     "clearCacheBtn",
     "clearNotesBtn",
@@ -263,4 +267,70 @@ test("the Base URL field is read-only and fixed in the page", () => {
   assert.match(field, /value="https:\/\/api\.meding\.site"/);
   assert.match(field, /\sreadonly\s/);
   assert.doesNotMatch(read("options.js"), /getElementById\("aiBaseUrl"\)/);
+});
+
+test("the save row reports saving, saved and error through data-state", async () => {
+  const ok = await openSettings({
+    stored: storedSettings(),
+    models: { success: true, models: ["model-a", "model-b"] },
+  });
+  assert.equal(ok.byId.formActions.dataset.state, undefined);
+  ok.byId.aiModel.value = "model-a";
+  await ok.byId.settingsForm.fire("submit");
+  assert.equal(ok.byId.formActions.dataset.state, "saved");
+  assert.equal(ok.byId.saveBtn.disabled, false);
+
+  const missing = await openSettings({
+    stored: storedSettings({ aiModel: "" }),
+    models: { success: false, error: "MODEL_LIST_FAILED" },
+  });
+  missing.byId.aiModelManual.value = "";
+  await missing.byId.settingsForm.fire("submit");
+  assert.equal(missing.byId.formActions.dataset.state, "error");
+  assert.equal(missing.byId.saveBtn.disabled, false);
+});
+
+test("connection test uses the token and model on screen and reports the result", async () => {
+  const { byId, sent } = await openSettings({
+    stored: storedSettings(),
+    models: (message) =>
+      message.action === "testConnection"
+        ? { success: true, model: message.model, latencyMs: 420 }
+        : { success: true, models: ["model-a", "model-b"] },
+  });
+  byId.aiModel.value = "model-a";
+  await byId.testConnectionBtn.fire("click");
+
+  const request = sent.find((m) => m.action === "testConnection");
+  assert.deepEqual(request, { action: "testConnection", apiKey: "token-1", model: "model-a" });
+  assert.equal(byId.connectionStatus.dataset.state, "ok");
+  assert.match(byId.connectionStatus.textContent, /Connected. model-a answered in 420 ms/);
+});
+
+test("connection test failures are specific and a changed token clears the result", async () => {
+  const { byId } = await openSettings({
+    stored: storedSettings(),
+    models: (message) =>
+      message.action === "testConnection"
+        ? { success: false, error: "INVALID_AI_KEY" }
+        : { success: true, models: ["model-a"] },
+  });
+  await byId.testConnectionBtn.fire("click");
+  assert.equal(byId.connectionStatus.dataset.state, "error");
+  assert.match(byId.connectionStatus.textContent, /token was rejected/i);
+
+  byId.aiApiKey.value = "token-2";
+  await byId.aiApiKey.fire("input");
+  assert.equal(byId.connectionStatus.textContent, "");
+  assert.equal(byId.connectionStatus.dataset.state, "idle");
+});
+
+test("connection test stays off until there is both a token and a model", async () => {
+  const { byId, sent } = await openSettings({
+    stored: storedSettings({ aiApiKey: "", aiModel: "" }),
+    models: { success: false, error: "NO_AI_KEY" },
+  });
+  await byId.testConnectionBtn.fire("click");
+  assert.equal(sent.some((m) => m.action === "testConnection"), false);
+  assert.equal(byId.connectionStatus.textContent, "");
 });

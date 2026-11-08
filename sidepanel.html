@@ -26,10 +26,10 @@
             class="settings-btn"
             id="settingsBtn"
             type="button"
-            title="Open Video Flow settings"
-            aria-label="Open Video Flow settings"
+            title="打开 Video Flow 设置"
+            aria-label="打开 Video Flow 设置"
           >
-            Settings
+            设置
           </button>
           <div
             class="transcript-mode-control global-language-control"
@@ -67,9 +67,9 @@
 
       <!-- Tab navigation -->
       <div class="tabs" id="tabsNav" style="display: none">
-        <button class="tab active" data-tab="transcript">Transcript</button>
-        <button class="tab" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="notes">Notes</button>
+        <button class="tab active" data-tab="transcript">字幕</button>
+        <button class="tab" data-tab="overview">概览</button>
+        <button class="tab" data-tab="notes">笔记</button>
       </div>
     </div>
 
@@ -190,7 +190,7 @@
         <div class="tab-panel" data-panel="overview">
           <!-- Chapters -->
           <div class="section">
-            <div class="section-title">Chapters</div>
+            <div class="section-title">章节</div>
             <ul class="chapter-list" id="chapterList">
               <li
                 class="chapter-item"
@@ -207,7 +207,7 @@
 
           <!-- Key Quotes -->
           <div class="section">
-            <div class="section-title">Key Quotes</div>
+            <div class="section-title">关键摘录</div>
             <div id="quotesList">
               <div
                 class="quote-item"
@@ -229,27 +229,26 @@
         <div class="tab-panel" data-panel="notes">
           <div class="section">
             <div class="section-header">
-              <div class="section-title">Saved Notes</div>
+              <div class="section-title">已保存笔记</div>
               <div class="notes-filter">
                 <button
                   class="enhance-btn active"
                   id="notesFilterThis"
                   aria-pressed="true"
                 >
-                  This Video
+                  本视频
                 </button>
                 <button
                   class="enhance-btn"
                   id="notesFilterAll"
                   aria-pressed="false"
                 >
-                  All Notes
+                  全部笔记
                 </button>
               </div>
             </div>
             <p class="notes-intro" id="notesIntro">
-              Move your mouse over the video and click Note to save a
-              timestamped note, or press the "n" key while the video is focused.
+              当前视频还没有笔记。将鼠标移到视频上并点击“Note”即可保存。
             </p>
             <div id="notesList"></div>
           </div>

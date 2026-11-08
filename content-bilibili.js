@@ -3,7 +3,7 @@
  *
  * Runs on bilibili.com/video/* and bilibili.com/list/* pages. It:
  * 1. Reports the current video (BV id, part, title, uploader, duration).
- * 2. Adds a "Flow" button and a "Note" button, and the "n" shortcut.
+ * 2. Adds a "Video Flow" button and a "Note" button, and the "n" shortcut.
  * 3. Seeks the player when the side panel asks it to.
  *
  * Bilibili renders its player with Vue. Touching the page before it settles can
@@ -99,10 +99,17 @@
   // Buttons
   // ------------------------------------------------------------
 
+  // Same look as the YouTube buttons: a rounded pill in the brand accent that
+  // darkens and lifts slightly on hover.
+  const BRAND_COLOR = "#d43366";
+  const BRAND_COLOR_HOVER = "#b82a58";
   const BASE_STYLE =
-    "display:inline-flex;align-items:center;gap:6px;padding:6px 14px;" +
-    "border:none;border-radius:6px;cursor:pointer;font-size:13px;" +
-    "line-height:1.4;color:#fff;white-space:nowrap;";
+    "display:inline-flex;align-items:center;justify-content:center;gap:7px;" +
+    "height:36px;padding:0 18px;border:none;border-radius:18px;" +
+    "cursor:pointer;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;" +
+    "font-size:14px;font-weight:600;line-height:1;color:#fff;" +
+    "white-space:nowrap;flex:0 0 auto;" +
+    "transition:background .2s,transform .1s,box-shadow .18s;";
 
   function firstMatch(selectors) {
     for (const selector of selectors) {
@@ -150,12 +157,26 @@
     button.type = "button";
     button.title = title;
     button.textContent = label;
+    const restingShadow = floating ? "0 4px 14px rgba(0,0,0,.3)" : "none";
+    const hoverShadow = floating ? "0 6px 18px rgba(0,0,0,.35)" : "none";
     button.style.cssText =
       BASE_STYLE +
       `background:${background};` +
-      (floating
-        ? "box-shadow:0 2px 8px rgba(0,0,0,.2);"
-        : "margin-left:12px;");
+      `box-shadow:${restingShadow};` +
+      (floating ? "" : "margin-left:12px;");
+    // The Note button keeps its translucent look on the player. The Video Flow
+    // button uses the brand colors on hover, as it does on YouTube.
+    const isBrand = background === BRAND_COLOR;
+    button.addEventListener("mouseenter", () => {
+      button.style.background = isBrand ? BRAND_COLOR_HOVER : BRAND_COLOR;
+      button.style.boxShadow = hoverShadow;
+      button.style.transform = floating ? "translateY(-1px)" : "scale(1.02)";
+    });
+    button.addEventListener("mouseleave", () => {
+      button.style.background = background;
+      button.style.boxShadow = restingShadow;
+      button.style.transform = "none";
+    });
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -183,7 +204,7 @@
       flash(
         document.getElementById(DIGEST_BUTTON_ID),
         "Use the toolbar icon",
-        "Flow",
+        "Video Flow",
       );
     }
   }
@@ -197,9 +218,9 @@
     host.appendChild(
       makeButton(
         DIGEST_BUTTON_ID,
-        "Flow",
+        "Video Flow",
         "Open the Video Flow side panel",
-        "#d43366",
+        BRAND_COLOR,
         !toolbar,
         openSidePanel,
       ),
@@ -215,7 +236,7 @@
         NOTE_BUTTON_ID,
         "Note",
         "Save a note at this moment (shortcut: n)",
-        "rgba(0,0,0,.55)",
+        BRAND_COLOR,
         true,
         saveNoteAtCurrentTime,
       ),

@@ -142,6 +142,34 @@ test("release copy documents current scope without em dashes", () => {
   assert.doesNotMatch(optionsPage, /id="provider"/);
   assert.match(optionsPage, /<select\b[^>]*id="aiModel"/);
   assert.match(optionsPage, /<input[^>]*id="aiBaseUrl"[^>]*\sreadonly\s/);
+  // The provider summary, privacy note, and company footer are gone from
+  // Settings. The company name stays in the top brand area.
+  assert.doesNotMatch(optionsPage, /provider-summary|provider-badge|privacy-note/i);
+  assert.match(optionsPage, /class="eyebrow"[\s\S]*>\s*<span[^>]*>深度云创科技<\/span>/);
+  assert.doesNotMatch(optionsPage, /class="company-credit"|深度云创科技\s*·\s*Video Flow/);
+  assert.doesNotMatch(optionsStyles, /provider-summary|provider-badge|privacy-note|company-credit/i);
+  assert.doesNotMatch(optionsScript, /providerBadge|providerSummaryLabel|privacyNote|footer:/);
+  // The top "create an API token" heading is gone. The token site is linked from
+  // the AI card title and from the line under the Base URL, without underlines.
+  assert.doesNotMatch(optionsPage, /create an API token/i);
+  assert.doesNotMatch(optionsScript, /创建 API 密钥|create an API token/i);
+  assert.match(optionsPage, /<h2[^>]*data-i18n-html="aiProvider"[^>]*>[\s\S]*?href="https:\/\/api\.meding\.site"/);
+  // The create-token link sits right under the API token field, in the same
+  // line as the note that models load automatically.
+  assert.match(
+    optionsPage,
+    /id="aiApiKey"[\s\S]*?data-i18n-html="aiApiKeyHelp"[^>]*>[\s\S]*?href="https:\/\/api\.meding\.site"/,
+  );
+  assert.doesNotMatch(optionsPage, /baseUrlHelp/);
+  assert.doesNotMatch(optionsScript, /baseUrlHelp/);
+  assert.match(optionsScript, /前往 API 分发站创建密钥<\/a>，填写密钥后会自动获取模型列表/);
+  assert.doesNotMatch(optionsScript, /Base URL 已固定|只会发送到这个地址/);
+  const tokenLink = optionsStyles.match(/h2 a,\s*\.help a\[href="https:\/\/api\.meding\.site"\]\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(tokenLink, /text-decoration:\s*none/);
+  // The intro paragraph under the language switch was removed from Settings.
+  assert.doesNotMatch(optionsPage, /class="lede"|fully open-source|sent only to Supadata|developer server/i);
+  assert.doesNotMatch(optionsStyles, /\.lede\b/);
+  assert.doesNotMatch(optionsScript, /lede:|完全开源|fully open-source|sent only to Supadata|开发者服务器/);
   // The "Want to use another AI model?" remix card was removed from Settings.
   assert.doesNotMatch(optionsPage, /customization|Local remix|agent-badge/i);
   assert.doesNotMatch(optionsStyles, /customization|agent-badge|prompt-reminder/i);
@@ -236,11 +264,11 @@ test("notes filters preserve selected contrast and expose pressed state", () => 
 
   assert.match(
     html,
-    /id="notesFilterThis"[\s\S]*?aria-pressed="true"[\s\S]*?>[\s\S]*?This Video/,
+    /id="notesFilterThis"[\s\S]*?aria-pressed="true"[\s\S]*?>[\s\S]*?本视频/,
   );
   assert.match(
     html,
-    /id="notesFilterAll"[\s\S]*?aria-pressed="false"[\s\S]*?>[\s\S]*?All Notes/,
+    /id="notesFilterAll"[\s\S]*?aria-pressed="false"[\s\S]*?>[\s\S]*?全部笔记/,
   );
   assert.match(
     css,
@@ -325,4 +353,38 @@ test("published prompt files contain runtime sections", () => {
       assert.match(markdown, new RegExp(`^## ${section}$`, "m"));
     }
   }
+});
+
+test("Settings save button has states and the Bilibili buttons match YouTube", () => {
+  const page = read("options.html");
+  const styles = read("options.css");
+  const bilibili = read("content-bilibili.js");
+  const youtube = read("content.js");
+
+  // Save button: spinner and check live inside the button, state is data-driven.
+  assert.match(page, /id="saveBtn"[\s\S]*?class="save-btn-spinner"[\s\S]*?class="save-btn-label"/);
+  assert.match(page, /id="formActions"[^>]*data-state="idle"/);
+  assert.match(styles, /\.form-actions\[data-state="saved"\] \.save-btn\s*\{/);
+  assert.match(styles, /\.form-actions\[data-state="error"\] \.save-status\s*\{/);
+  assert.match(styles, /button\.primary:focus-visible\s*\{/);
+  assert.match(styles, /--ok-solid:/);
+  // The button aligns with the form content and keeps a stable touch target.
+  const saveBtn = styles.match(/\n\.save-btn\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(saveBtn, /height:\s*40px/);
+  assert.match(saveBtn, /min-width:\s*132px/);
+  assert.match(saveBtn, /font-size:\s*13px/);
+  assert.doesNotMatch(page, /supadataHelpSuffix|generates the key during onboarding/);
+  assert.doesNotMatch(read("options.js"), /supadataHelpSuffix|引导流程中生成密钥/);
+  // The heavy 30% glow under the resting button was replaced by a thin shadow.
+  const primary = styles.match(/\nbutton\.primary\s*\{[^}]*\}/)?.[0] || "";
+  assert.doesNotMatch(primary, /0 4px 12px/);
+
+  // Bilibili uses the same brand pill as YouTube, including the hover color.
+  for (const source of [bilibili, youtube]) {
+    assert.match(source, /#d43366/);
+    assert.match(source, /#b82a58/);
+  }
+  assert.match(bilibili, /height:36px;padding:0 18px;border:none;border-radius:18px/);
+  assert.doesNotMatch(bilibili, /border-radius:6px/);
+  assert.doesNotMatch(bilibili, /rgba\(0,0,0,\.55\)/);
 });

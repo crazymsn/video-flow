@@ -12,7 +12,7 @@
         <div class="settings-heading-row">
           <div class="eyebrow">
             <img class="settings-brand-mark" src="icons/icon128.png" alt="" aria-hidden="true" />
-            <span>Video Flow</span>
+            <span class="brand-company">深度云创科技</span>
           </div>
           <div
             class="language-switch"
@@ -38,12 +38,6 @@
             </button>
           </div>
         </div>
-        <h1 data-i18n="heading">Bring your own API keys</h1>
-        <p class="lede" data-i18n="lede">
-          Keys stay in this Chrome profile and are sent only to Supadata (for
-          YouTube) and the AI gateway. This open-source extension has no
-          developer server or analytics.
-        </p>
       </header>
 
       <form id="settingsForm">
@@ -71,25 +65,16 @@
               rel="noreferrer"
               data-i18n="supadataLink"
               >Create a Supadata account and key</a
-            ><span data-i18n="supadataHelpSuffix"
-              >. Supadata generates the key during onboarding.</span
             >
           </p>
         </section>
 
         <section class="card">
-          <h2 data-i18n="aiProvider">AI provider</h2>
-          <div
-            class="provider-summary"
-            aria-label="Supported AI provider"
-            data-i18n-aria-label="providerSummaryLabel"
-          >
-            <span class="provider-name">OpenAI compatible</span>
-            <span class="provider-badge" data-i18n="providerBadge"
-              >Fixed Base URL</span
+          <h2 data-i18n-html="aiProvider">
+            <a href="https://api.meding.site" target="_blank" rel="noreferrer"
+              >Enter your API token</a
             >
-          </div>
-
+          </h2>
           <label for="aiBaseUrl" data-i18n="baseUrlLabel">Base URL</label>
           <input
             id="aiBaseUrl"
@@ -100,10 +85,6 @@
             aria-readonly="true"
             spellcheck="false"
           />
-          <p class="help" data-i18n="baseUrlHelp">
-            The Base URL is fixed and cannot be changed. Your API token is sent
-            only to this address.
-          </p>
 
           <label for="aiApiKey" data-i18n="aiApiKeyLabel">API token</label>
           <input
@@ -114,8 +95,10 @@
             spellcheck="false"
             placeholder="Paste your API token"
           />
-          <p class="help" data-i18n="aiApiKeyHelp">
-            Models load automatically after you enter the token.
+          <p class="help" data-i18n-html="aiApiKeyHelp">
+            <a href="https://api.meding.site" target="_blank" rel="noreferrer"
+              >Go to the API distribution site to create a token</a
+            >, and models load automatically after you enter the token.
           </p>
 
           <label for="aiModel" data-i18n="modelLabel">Model</label>
@@ -132,6 +115,17 @@
             >
               Refresh models
             </button>
+            <button
+              id="testConnectionBtn"
+              class="test-btn"
+              type="button"
+              disabled
+            >
+              <span class="test-btn-spinner" aria-hidden="true"></span>
+              <span class="test-btn-label" data-i18n="testConnection"
+                >Test connection</span
+              >
+            </button>
           </div>
           <div id="manualModelRow" class="manual-model-row" hidden>
             <label for="aiModelManual" data-i18n="manualModelLabel"
@@ -147,19 +141,42 @@
             />
           </div>
           <span id="modelStatus" role="status" aria-live="polite"></span>
-
-          <div class="privacy-note" data-i18n="privacyNote">
-            When you use AI features, the gateway at the Base URL receives the
-            video transcript and relevant video context. Review its terms and
-            pricing before saving.
-          </div>
+          <span
+            id="connectionStatus"
+            class="connection-status"
+            data-state="idle"
+            role="status"
+            aria-live="polite"
+          ></span>
         </section>
 
-        <div class="form-actions">
-          <button class="primary" type="submit" data-i18n="saveSettings">
-            Save settings
+        <div class="form-actions" id="formActions" data-state="idle">
+          <button class="primary save-btn" id="saveBtn" type="submit">
+            <svg
+              class="save-btn-icon"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12.5l4.5 4.5L19 7.5"></path>
+            </svg>
+            <span class="save-btn-spinner" aria-hidden="true"></span>
+            <span class="save-btn-label" data-i18n="saveSettings"
+              >Save settings</span
+            >
           </button>
-          <span id="saveStatus" role="status" aria-live="polite"></span>
+          <span
+            id="saveStatus"
+            class="save-status"
+            role="status"
+            aria-live="polite"
+          ></span>
         </div>
       </form>
 
@@ -187,11 +204,6 @@
         </div>
         <span id="dataStatus" role="status" aria-live="polite"></span>
       </section>
-
-      <footer data-i18n-html="footer">
-        Read <a href="PRIVACY.md" target="_blank">PRIVACY.md</a> in the
-        repository for the complete data-flow description.
-      </footer>
     </main>
 
     <script src="settings.js"></script>

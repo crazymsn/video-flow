@@ -34,6 +34,7 @@
   --faint: #a29a9e;
   --danger: #c93445;
   --ok: #217a45;
+  --ok-solid: #2a8a52;
 
   --note-bg: color-mix(in srgb, var(--accent) 8%, var(--surface));
   --note-border: color-mix(in srgb, var(--accent) 24%, var(--border));
@@ -74,6 +75,7 @@
     --faint: #6b7076;
     --danger: #ff6b7a;
     --ok: #5fcf8a;
+    --ok-solid: #2f9d5e;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
@@ -95,6 +97,7 @@
   --faint: #6b7076;
   --danger: #ff6b7a;
   --ok: #5fcf8a;
+  --ok-solid: #2f9d5e;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
@@ -152,9 +155,10 @@ body {
 /* ---------- Layout ---------- */
 
 .settings-shell {
-  width: min(680px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 48px 0 72px;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 48px 32px 0;
 }
 
 header {
@@ -166,6 +170,7 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding-inline: 24px;
 }
 
 /* ---------- Brand eyebrow ---------- */
@@ -181,6 +186,14 @@ header {
   text-transform: uppercase;
 }
 
+.brand-company {
+  color: var(--accent-text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .settings-brand-mark {
   width: 22px;
   height: 22px;
@@ -188,24 +201,8 @@ header {
   object-fit: contain;
 }
 
-h1 {
-  margin: 14px 0 8px;
-  font-size: clamp(26px, 4.6vw, 34px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.lede,
 .help {
   color: var(--muted);
-}
-
-.lede {
-  max-width: 600px;
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.65;
 }
 
 /* ---------- Language switch ---------- */
@@ -285,6 +282,27 @@ label {
 
 h2 + label {
   margin-top: 0;
+}
+
+/* Links to the token site inside the AI card: still links, but no underline.
+   Hover and keyboard focus show they are clickable. */
+h2 a,
+.help a[href="https://api.meding.site"] {
+  color: var(--accent-text);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease);
+}
+
+h2 a:hover,
+.help a[href="https://api.meding.site"]:hover {
+  color: var(--accent-text-strong);
+}
+
+h2 a:focus-visible,
+.help a[href="https://api.meding.site"]:focus-visible {
+  border-radius: var(--r-sm);
+  outline: var(--focus-ring);
+  outline-offset: 3px;
 }
 
 /* ---------- Fields ---------- */
@@ -388,6 +406,72 @@ a:hover {
   flex: 0 0 auto;
 }
 
+/* ---------- Connection test ---------- */
+
+.test-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.test-btn-spinner {
+  display: none;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 2px solid var(--border-heavy);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: saveSpin 0.7s linear infinite;
+}
+
+.test-btn[data-state="testing"] .test-btn-spinner {
+  display: inline-block;
+}
+
+.test-btn[data-state="testing"] {
+  cursor: progress;
+}
+
+.test-btn[data-state="ok"] {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.test-btn[data-state="error"] {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.connection-status {
+  display: block;
+  min-height: 1.4em;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.connection-status:empty {
+  display: none;
+}
+
+.connection-status[data-state="ok"] {
+  color: var(--ok);
+}
+
+.connection-status[data-state="error"] {
+  color: var(--danger);
+}
+
+@media (max-width: 620px) {
+  .model-row .test-btn {
+    flex: 1 1 100%;
+  }
+}
+
 .manual-model-row {
   margin-top: 12px;
 }
@@ -398,46 +482,6 @@ a:hover {
   margin-top: 8px;
   color: var(--muted);
   font-size: 13px;
-}
-
-/* ---------- Notices ---------- */
-
-.privacy-note {
-  margin-top: 18px;
-  padding: 12px 14px;
-  border: 1px solid var(--note-border);
-  border-radius: var(--r-md);
-  background: var(--note-bg);
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.65;
-}
-
-.provider-summary {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: space-between;
-  margin-bottom: 18px;
-  padding: 12px 14px;
-  border: 1px solid var(--note-border);
-  border-radius: var(--r-md);
-  background: var(--note-bg);
-}
-
-.provider-name {
-  font-weight: 700;
-}
-
-.provider-badge {
-  padding: 3px 10px;
-  border-radius: var(--r-pill);
-  background: var(--accent-dim-strong);
-  color: var(--accent-text-strong);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
 }
 
 /* ---------- Buttons ---------- */
@@ -492,20 +536,109 @@ button.primary {
   border-color: transparent;
   background: var(--accent-solid);
   color: var(--on-accent);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-solid) 30%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent-solid) 40%, transparent);
 }
 
 button.primary:hover {
   border-color: transparent;
   background: var(--accent-hover);
   color: var(--on-accent);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent-solid) 38%, transparent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent-solid) 26%, transparent);
 }
 
 button.primary:active {
   background: var(--accent-hover);
   transform: translateY(1px);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent-solid) 30%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent-solid) 40%, transparent);
+}
+
+button.primary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* ---------- Save settings ---------- */
+
+.form-actions {
+  margin-top: 4px;
+  padding-inline: 24px;
+}
+
+.save-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 132px;
+  height: 40px;
+  padding: 0 20px;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+/* The check and the spinner share the icon slot. Idle shows neither. */
+.save-btn-icon,
+.save-btn-spinner {
+  display: none;
+  flex: 0 0 auto;
+}
+
+.save-btn-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid color-mix(in srgb, var(--on-accent) 35%, transparent);
+  border-top-color: var(--on-accent);
+  border-radius: 50%;
+  animation: saveSpin 0.7s linear infinite;
+}
+
+.form-actions[data-state="saving"] .save-btn-spinner,
+.form-actions[data-state="saved"] .save-btn-icon {
+  display: inline-block;
+}
+
+.form-actions[data-state="saving"] .save-btn {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.form-actions[data-state="saved"] .save-btn {
+  background: var(--ok-solid);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ok-solid) 40%, transparent);
+}
+
+/* The status line fades in beside the button and is colored by outcome. */
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.4em;
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.save-status:not(:empty) {
+  opacity: 1;
+  transform: none;
+}
+
+.form-actions[data-state="saved"] .save-status {
+  color: var(--ok);
+}
+
+.form-actions[data-state="error"] .save-status {
+  color: var(--danger);
+}
+
+@keyframes saveSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 button.danger {
@@ -520,27 +653,28 @@ button.danger:hover {
 
 /* ---------- Status lines ---------- */
 
-#saveStatus,
 #dataStatus {
   color: var(--muted);
   font-size: 13px;
+}
+
+.save-status {
+  color: var(--muted);
 }
 
 .data-card {
   margin-top: 36px;
 }
 
-footer {
-  margin-top: 28px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
 /* ---------- Narrow screens ---------- */
 
 @media (max-width: 620px) {
   .settings-shell {
-    padding-top: 28px;
+    padding: 28px 16px 0;
+  }
+
+  .form-actions {
+    padding-inline: 18px;
   }
 
   .card {
@@ -549,6 +683,7 @@ footer {
 
   .settings-heading-row {
     align-items: flex-start;
+    padding-inline: 18px;
   }
 
   .language-switch .language-option {

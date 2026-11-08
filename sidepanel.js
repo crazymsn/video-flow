@@ -21,6 +21,7 @@ let currentTranscript = null;
 let currentTranscriptText = null; // Plain text (for display/export)
 let currentTranscriptTimestamped = null; // With timestamps for AI analysis
 let currentTranscriptLanguage = null;
+let currentTranscriptIsChinese = false;
 let currentVideoTitle = "";
 let currentChannelName = "";
 let currentVideoDescription = "";
@@ -46,7 +47,18 @@ let interfaceTranslationFailures = new Set();
 let currentNotes = [];
 let currentNotesFilterVideoId = null;
 const TRANSLATION_MESSAGE_TIMEOUT_MS = 130_000;
+// The background gives up on the AI gateway after 240 seconds, so the panel
+// waits slightly longer and then reports an error instead of loading forever.
+const ANALYSIS_MESSAGE_TIMEOUT_MS = 250_000;
+const NOTES_MESSAGE_TIMEOUT_MS = 15_000;
 const TRANSLATION_BATCH_SIZE = 3;
+// Overview and Notes strings are short, so a batch carries the most the
+// background accepts (4). Several batches run at once, and the transcript queue
+// uses the same limit for the rows scrolled into view.
+const INTERFACE_BATCH_SIZE = 4;
+const TRANSLATION_CONCURRENCY = 50;
+const INTERFACE_BATCH_CONCURRENCY = TRANSLATION_CONCURRENCY;
+const TRANSCRIPT_BATCH_CONCURRENCY = TRANSLATION_CONCURRENCY;
 
 // --- Transcript search state ---
 // Matches point to visible marks in the active transcript language mode.
@@ -60,6 +72,19 @@ let transcriptSearchIndex = -1;
  * cancelled, so settled guards deliberately ignore any late response.
  */
 function sendTranslationMessage(message) {
+  return sendMessageWithTimeout(
+    message,
+    TRANSLATION_MESSAGE_TIMEOUT_MS,
+    "Translation request timed out after 130 seconds. Please Retry.",
+  );
+}
+
+/**
+ * Sends one runtime message and always settles. Overview and Notes keep a
+ * "loading" flag while they wait, so a reply that never arrives would leave
+ * the tab stuck on "Loading..." and block every retry.
+ */
+function sendMessageWithTimeout(message, timeoutMs, timeoutText) {
   return new Promise((resolve, reject) => {
     let settled = false;
     let timeoutId;
@@ -71,13 +96,8 @@ function sendTranslationMessage(message) {
     };
 
     timeoutId = setTimeout(() => {
-      finish(
-        reject,
-        new Error(
-          "Translation request timed out after 130 seconds. Please Retry.",
-        ),
-      );
-    }, TRANSLATION_MESSAGE_TIMEOUT_MS);
+      finish(reject, new Error(timeoutText));
+    }, timeoutMs);
 
     let messagePromise;
     try {
@@ -286,6 +306,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     updateLoading(message.title, message.subtitle);
     sendResponse({ success: true });
   }
+  if (message.action === "analysisProgress") {
+    // The overview is streaming in. Show that it is alive and how much arrived.
+    showAnalysisProgress(message.bytes, message.partial, message.videoId);
+    sendResponse({ success: true });
+  }
   if (message.action === "noteSaved") {
     // Refresh notes list when a new note is saved
     const filterAll = document
@@ -395,7 +420,37 @@ chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
   }
 });
 
+/**
+ * Retry for Overview and Notes translations. A failed item is remembered so it
+ * is not asked for again in a loop, so Retry forgets those failures for the
+ * surface and runs the translation again. Transcript rows have their own Retry.
+ */
+function retryInterfaceTranslation(surface) {
+  const prefix = `${currentVideoId || "none"}:${translationTarget()}:${surface}:`;
+  for (const key of [...interfaceTranslationFailures]) {
+    if (key.startsWith(prefix)) interfaceTranslationFailures.delete(key);
+  }
+  if (surface === "overview") {
+    renderAnalysisResults(currentAnalysis, { draft: true });
+    void translateOverviewContent();
+  } else if (surface === "notes") {
+    renderNotes(currentNotes, currentNotesFilterVideoId);
+    void translateNotesContent();
+  }
+}
+
 function setupEventListeners() {
+  // One listener for every Retry button the Overview and Notes rows create.
+  document.addEventListener("click", (event) => {
+    const button = event.target?.closest?.("[data-retry-surface]");
+    if (!button) return;
+    // Capture phase, so this runs before a chapter or quote row's own click
+    // handler and the video does not also jump to that timestamp.
+    event.preventDefault();
+    event.stopPropagation();
+    retryInterfaceTranslation(button.dataset.retrySurface);
+  }, true);
+
   // Tab switching
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
@@ -433,6 +488,8 @@ function setupEventListeners() {
   // pagehide also covers closing the side panel without a tab change.
   window.addEventListener("pagehide", () => {
     void saveCurrentTranscriptViewState();
+    // Translations finished in the last moments must not be lost on close.
+    void flushCacheNow();
   });
 
   // Follow playback button — re-enables auto-scroll after user scrolled away
@@ -555,6 +612,9 @@ async function startDigest(videoId, videoUrl) {
 
   const videoChanged = videoId !== currentVideoId;
 
+  // Save what the old video translated before its state is replaced.
+  if (videoChanged && currentVideoId) await flushCacheNow();
+
   // Every video change invalidates observer work and in-flight translations.
   if (videoChanged) {
     translationGeneration += 1;
@@ -586,7 +646,10 @@ async function startDigest(videoId, videoUrl) {
     currentTranscriptText = cached.transcriptText;
     currentTranscriptTimestamped = cached.transcriptTimestamped;
     currentTranscriptLanguage = cached.transcriptLanguage || null;
-    isAnalysisLoading = false;
+    applySubtitleLanguageRules();
+    // Re-entering the same video must not forget an analysis that is still
+    // running, or Overview would send a second request for it.
+    if (videoChanged) isAnalysisLoading = false;
 
     // Restore semantic-segment translations from persistent storage.
     if (cached.paragraphCache) {
@@ -637,7 +700,8 @@ async function startDigest(videoId, videoUrl) {
   currentTranscriptText = null;
   currentTranscriptTimestamped = null;
   currentTranscriptLanguage = null;
-  isAnalysisLoading = false;
+  applySubtitleLanguageRules();
+  if (videoChanged) isAnalysisLoading = false;
 
   if (currentVideoTitle || currentChannelName) {
     const videoInfo = document.getElementById("videoInfo");
@@ -679,6 +743,7 @@ async function startDigest(videoId, videoUrl) {
   currentTranscriptText = transcriptResult.transcriptText;
   currentTranscriptTimestamped = transcriptResult.transcriptTextTimestamped;
   currentTranscriptLanguage = transcriptResult.language || null;
+  applySubtitleLanguageRules();
 
   // Render transcript immediately (no LLM needed)
   renderTranscript();
@@ -705,8 +770,17 @@ async function startDigest(videoId, videoUrl) {
 // RENDERING
 // ============================================================
 
+/**
+ * The language the AI translates into. Most videos are translated into
+ * Chinese. When the subtitles are already Chinese there is nothing to
+ * translate into Chinese, so the bilingual view adds English instead.
+ */
+function translationTarget() {
+  return currentTranscriptIsChinese ? "en" : "zh";
+}
+
 function interfaceTranslationCacheKey(surface, id, text) {
-  return `${currentVideoId || "none"}:zh:${surface}:${id}:${text}`;
+  return `${currentVideoId || "none"}:${translationTarget()}:${surface}:${id}:${text}`;
 }
 
 function getInterfaceTranslation(surface, id, text) {
@@ -725,7 +799,7 @@ function renderLocalizedContent(text, surface, id) {
   const translation = translated
     ? escapeHtml(translated)
     : interfaceTranslationFailures.has(cacheKey)
-      ? '<span class="translation-error">Translation unavailable.</span>'
+      ? `<span class="translation-error">Translation unavailable.<button class="translation-retry-btn" type="button" data-retry-surface="${escapeHtml(surface)}">Retry</button></span>`
       : '<span class="translation-pending">Translating...</span>';
   if (currentTranscriptMode === "bilingual") {
     return `<span class="localized-copy"><span class="localized-original">${escapeHtml(original)}</span><span class="localized-translation">${translation}</span></span>`;
@@ -768,12 +842,17 @@ async function translateInterfaceSegments(surface, segments, rerender) {
   missing.forEach((segment) => interfaceTranslationInFlight.add(segment.cacheKey));
   setTranslatingSpinner(true);
   try {
-    for (
-      let start = 0;
-      start < missing.length;
-      start += TRANSLATION_BATCH_SIZE
-    ) {
-      const batch = missing.slice(start, start + TRANSLATION_BATCH_SIZE);
+    // Split into batches up front, then run a few at a time. Each batch is shown
+    // and saved the moment it returns, so the first results appear quickly and a
+    // long overview no longer waits for one request after another.
+    const batches = [];
+    for (let at = 0; at < missing.length; at += INTERFACE_BATCH_SIZE) {
+      batches.push(missing.slice(at, at + INTERFACE_BATCH_SIZE));
+    }
+    let nextBatch = 0;
+    let stale = false;
+
+    const runBatch = async (batch) => {
       let result;
       try {
         result = await sendTranslationMessage({
@@ -782,7 +861,7 @@ async function translateInterfaceSegments(surface, segments, rerender) {
             segments: batch.map(({ id, text }) => ({ id, text })),
           },
           contentType: "interfaceBatch",
-          targetLanguage: "zh",
+          targetLanguage: translationTarget(),
           videoTitle: currentVideoTitle,
         });
       } catch (error) {
@@ -794,6 +873,20 @@ async function translateInterfaceSegments(surface, segments, rerender) {
         videoId !== currentVideoId ||
         currentTranscriptMode === "original"
       ) {
+        stale = true;
+        // Keep what was paid for. The key was built when the batch was sent, so
+        // it already names the video and language this text belongs to.
+        if (result?.success) {
+          alignTranslatedSegmentBatch(
+            batch,
+            result.translatedContent?.segments,
+          ).forEach((item, index) => {
+            if (item.text) {
+              interfaceTranslationCache.set(batch[index].cacheKey, item.text);
+            }
+          });
+          if (videoId === currentVideoId) void updateCache();
+        }
         return;
       }
       const aligned = alignTranslatedSegmentBatch(
@@ -811,7 +904,19 @@ async function translateInterfaceSegments(surface, segments, rerender) {
       // as it returns instead of waiting for the full Overview or Notes list.
       rerender();
       await updateCache();
-    }
+    };
+
+    const worker = async () => {
+      while (!stale && nextBatch < batches.length) {
+        await runBatch(batches[nextBatch++]);
+      }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(INTERFACE_BATCH_CONCURRENCY, batches.length) },
+        worker,
+      ),
+    );
   } catch (error) {
     console.error("[Video Flow] Interface translation error:", error);
     missing.forEach((segment) =>
@@ -879,7 +984,7 @@ function translateNotesContent() {
  * Renders the analysis results into the Overview tab.
  * Shows chapters and key quotes only.
  */
-function renderAnalysisResults(analysis) {
+function renderAnalysisResults(analysis, { draft = false } = {}) {
   // Chapters
   const chapterList = document.getElementById("chapterList");
   chapterList.innerHTML = "";
@@ -959,7 +1064,9 @@ function renderAnalysisResults(analysis) {
     quotesList.appendChild(div);
   });
 
+  // A draft is still being written, so translating it would be wasted work.
   if (
+    !draft &&
     currentTranscriptMode !== "original" &&
     resultTabIsActive("overview")
   ) {
@@ -1544,8 +1651,39 @@ function renderAnalysisError(message) {
     chapterList.innerHTML = `<li class="chapter-item analysis-error">${safeMessage}</li>`;
   }
   if (quotesList) {
-    quotesList.innerHTML = `<div class="quote-item analysis-error">Overview could not be loaded. Switch tabs and try again.</div>`;
+    quotesList.innerHTML =
+      '<div class="quote-item analysis-error"><div>Overview could not be loaded.</div>' +
+      '<button type="button" class="analysis-retry-btn" id="analysisRetryBtn">Retry</button></div>';
+    document
+      .getElementById("analysisRetryBtn")
+      ?.addEventListener("click", retryAnalysis);
   }
+}
+
+/** Starts the overview again after a failure, without switching tabs. */
+function retryAnalysis() {
+  if (isAnalysisLoading || currentAnalysis) return;
+  void triggerAnalysis();
+}
+
+/** Shows live progress while the overview streams in from the AI gateway. */
+function showAnalysisProgress(bytes, partial, videoId) {
+  if (!isAnalysisLoading) return;
+  // A message about another video belongs to a request the panel has moved on from.
+  if (videoId && videoId !== currentVideoId) return;
+
+  // Chapters and quotes that are already finished appear immediately, while the
+  // model keeps writing the rest. The final result replaces this draft.
+  if (partial && (partial.chapters?.length || partial.keyQuotes?.length)) {
+    renderAnalysisResults(partial, { draft: true });
+    return;
+  }
+
+  const chapterList = document.getElementById("chapterList");
+  const first = chapterList?.firstElementChild;
+  if (!first || !first.classList?.contains("analysis-loading")) return;
+  const kb = Math.max(1, Math.round(Number(bytes) / 1024));
+  first.textContent = `Writing the overview... ${kb} KB received`;
 }
 
 async function triggerAnalysis() {
@@ -1570,20 +1708,25 @@ async function triggerAnalysis() {
 
   if (chapterList)
     chapterList.innerHTML =
-      '<li class="chapter-item" style="color: var(--text-muted); border: none;">Loading chapters...</li>';
+      '<li class="chapter-item analysis-loading" style="color: var(--text-muted); border: none;">Loading chapters...</li>';
   if (quotesList)
     quotesList.innerHTML =
       '<div class="quote-item" style="color: var(--text-muted); border-left-color: var(--border);">Loading quotes...</div>';
 
   try {
-    const analysisResult = await chrome.runtime.sendMessage({
-      action: "analyzeTranscript",
-      transcriptText: currentTranscriptTimestamped,
-      videoTitle: currentVideoTitle,
-      channelName: currentChannelName,
-      videoDescription: currentVideoDescription,
-      videoDuration: currentVideoDuration,
-    });
+    const analysisResult = await sendMessageWithTimeout(
+      {
+        action: "analyzeTranscript",
+        transcriptText: currentTranscriptTimestamped,
+        videoTitle: currentVideoTitle,
+        channelName: currentChannelName,
+        videoDescription: currentVideoDescription,
+        videoDuration: currentVideoDuration,
+        videoId: requestVideoId,
+      },
+      ANALYSIS_MESSAGE_TIMEOUT_MS,
+      "The overview request timed out. Press Retry to try again.",
+    );
 
     if (requestVideoId !== currentVideoId) return;
 
@@ -2122,10 +2265,45 @@ async function loadFromCache(videoId) {
 /**
  * Updates the cache after enhance or translation operations.
  */
-async function updateCache() {
-  if (currentVideoId) {
-    await saveToCache(currentVideoId);
+// Every translated batch used to rewrite the whole video entry, including the
+// full transcript, once per batch. With many batches finishing together that
+// meant hundreds of large writes. Updates are now merged: the first call in a
+// window starts one timer, and everything that finishes before it fires is
+// saved by a single write. flushCacheNow() forces the write when the panel
+// closes or the video changes.
+const CACHE_SAVE_DELAY_MS = 800;
+let cacheSaveTimer = null;
+let cacheSaveVideoId = null;
+let cacheSaveRunning = null;
+
+function updateCache() {
+  if (!currentVideoId) return Promise.resolve();
+  cacheSaveVideoId = currentVideoId;
+  if (cacheSaveTimer === null) {
+    cacheSaveTimer = setTimeout(() => {
+      cacheSaveTimer = null;
+      void flushCacheNow();
+    }, CACHE_SAVE_DELAY_MS);
   }
+  // Callers never need to wait for the disk, so they get a settled promise.
+  return Promise.resolve();
+}
+
+async function flushCacheNow() {
+  if (cacheSaveTimer !== null) {
+    clearTimeout(cacheSaveTimer);
+    cacheSaveTimer = null;
+  }
+  const videoId = cacheSaveVideoId;
+  cacheSaveVideoId = null;
+  if (!videoId) return;
+  // Never run two saves at once. The second one picks up everything the first
+  // did not see because the cache maps are read when the save starts.
+  while (cacheSaveRunning) await cacheSaveRunning;
+  cacheSaveRunning = saveToCache(videoId).finally(() => {
+    cacheSaveRunning = null;
+  });
+  await cacheSaveRunning;
 }
 
 // ============================================================
@@ -2143,10 +2321,11 @@ async function loadNotes(videoId) {
   // quickly, or changing video, can otherwise let a slow older reply win.
   const requestId = ++notesRequestId;
   try {
-    const result = await chrome.runtime.sendMessage({
-      action: "getNotes",
-      videoId: videoId,
-    });
+    const result = await sendMessageWithTimeout(
+      { action: "getNotes", videoId: videoId },
+      NOTES_MESSAGE_TIMEOUT_MS,
+      "Notes took too long to load. Switch tabs and try again.",
+    );
     if (requestId !== notesRequestId) return;
 
     if (result.success) {
@@ -2188,8 +2367,8 @@ function renderNotes(notes, filteredVideoId) {
   if (!notes || notes.length === 0) {
     notesIntro.style.display = "block";
     notesIntro.textContent = filteredVideoId
-      ? "No notes for this video yet. Hover over the video and click Note to save."
-      : "No notes saved yet. Hover over a video and click Note to save.";
+      ? "当前视频还没有笔记。将鼠标移到视频上并点击“Note”即可保存。"
+      : "还没有保存的笔记。将鼠标移到视频上并点击“Note”即可保存。";
     return;
   }
 
@@ -2632,7 +2811,7 @@ function getActiveTranscriptSegments() {
 }
 
 function transcriptTranslationCacheKey(segment) {
-  return `${currentVideoId}:zh:semantic:${segment.id}`;
+  return `${currentVideoId}:${translationTarget()}:semantic:${segment.id}`;
 }
 
 function setTranscriptModeButtons(mode) {
@@ -2643,9 +2822,63 @@ function setTranscriptModeButtons(mode) {
   });
 }
 
+/**
+ * True when the subtitle text is already mostly Chinese. The test counts Han
+ * characters against all letters in the text itself, because language tags from
+ * the transcript APIs are often missing or wrong. Numbers, punctuation and
+ * spaces are ignored, so "第 3 章" and quoted English names do not tip the result.
+ */
+function isChineseText(text) {
+  const sample = String(text || "").slice(0, 20000);
+  const han = (sample.match(/[㐀-鿿豈-﫿]/g) || []).length;
+  // One Chinese character carries about as much as one English word, so the
+  // two are compared as characters against words. Counting English letters
+  // would let a few terms like "Claude Code" outweigh a whole Chinese sentence.
+  const latinWords = (sample.match(/[A-Za-z]+/g) || []).length;
+  const units = han + latinWords;
+  if (han < 8 || units === 0) return false;
+  return han / units >= 0.6;
+}
+
+function isChineseTranscript(entries) {
+  if (!Array.isArray(entries) || !entries.length) return false;
+  // Sample the start, middle and end so an intro or outro in another language
+  // does not decide the whole video.
+  const pick = (from) => entries.slice(from, from + 40).map((e) => e?.text || "");
+  const middle = Math.max(0, Math.floor(entries.length / 2) - 20);
+  const last = Math.max(0, entries.length - 40);
+  return isChineseText([...pick(0), ...pick(middle), ...pick(last)].join(" "));
+}
+
+/**
+ * Chinese subtitles need no Chinese translation. Show only the Original
+ * button, remember that choice for the video, and never ask the AI to
+ * "translate" Chinese into Chinese.
+ */
+function applySubtitleLanguageRules() {
+  const chinese = isChineseTranscript(currentTranscript);
+  currentTranscriptIsChinese = chinese;
+  // Chinese subtitles are already Chinese, so the Chinese-only view would just
+  // repeat the original. Original and bilingual stay, and bilingual adds English.
+  document.querySelectorAll(".transcript-mode-btn").forEach((button) => {
+    const chineseOnly = button.dataset.transcriptMode === "zh";
+    button.hidden = chinese && chineseOnly;
+    button.disabled = chinese && chineseOnly;
+  });
+  const control = document.getElementById("transcriptModeControl");
+  control?.classList.toggle("is-source-chinese", chinese);
+  if (chinese && currentTranscriptMode === "zh") {
+    currentTranscriptMode = "bilingual";
+    setTranscriptModeButtons("bilingual");
+  }
+  return chinese;
+}
+
 async function handleDisplayLanguageModeChange(mode) {
   if (!DISPLAY_LANGUAGE_MODES.has(mode)) return;
   if (mode === currentTranscriptMode) return;
+  // A Chinese-only view of Chinese subtitles would repeat the original.
+  if (currentTranscriptIsChinese && mode === "zh") return;
 
   currentTranscriptMode = mode;
   await saveDisplayLanguageMode(currentVideoId, mode);
@@ -2808,6 +3041,30 @@ function updateTranslatedRow(segment, index, alignedItem, generation) {
 
 let activeTranslationQueue = null;
 
+/**
+ * Stores the text of a finished batch whose result is no longer wanted on
+ * screen. The cache key carries the video and the target language, so it can
+ * only ever be reused for exactly the same segment and language.
+ */
+function keepFinishedTranslation(sourceBatch, result, videoId, target) {
+  if (!result?.success || !videoId) return;
+  const aligned = alignTranslatedSegmentBatch(
+    sourceBatch,
+    result.translatedContent?.segments,
+  );
+  let kept = 0;
+  aligned.forEach((item, index) => {
+    if (!item.text) return;
+    transcriptParagraphCache.set(
+      `${videoId}:${target}:semantic:${sourceBatch[index].id}`,
+      item.text,
+    );
+    kept += 1;
+  });
+  // Only the video that is still open can be saved from this panel's state.
+  if (kept && videoId === currentVideoId) void updateCache();
+}
+
 async function requestTranscriptTranslationBatch(
   indices,
   segments,
@@ -2816,6 +3073,8 @@ async function requestTranscriptTranslationBatch(
   mode,
 ) {
   const sourceBatch = indices.map((index) => segments[index]);
+  // Captured now: by the time the reply arrives the panel may have moved on.
+  const requestTarget = translationTarget();
   setTranslatingSpinner(true);
   try {
     const result = await sendTranslationMessage({
@@ -2824,7 +3083,7 @@ async function requestTranscriptTranslationBatch(
         segments: sourceBatch.map(({ id, text }) => ({ id, text })),
       },
       contentType: "transcriptBatch",
-      targetLanguage: "zh",
+      targetLanguage: requestTarget,
       videoTitle: currentVideoTitle,
     });
 
@@ -2832,7 +3091,13 @@ async function requestTranscriptTranslationBatch(
       generation !== translationGeneration ||
       videoId !== currentVideoId ||
       mode !== currentTranscriptMode;
-    if (isStale) return;
+    if (isStale) {
+      // The user switched mode or video while this batch was away. The text is
+      // still a good translation of those segments, so keep it for next time
+      // instead of paying for it again. Nothing on screen is touched.
+      keepFinishedTranslation(sourceBatch, result, videoId, requestTarget);
+      return;
+    }
 
     const responseSegments = result?.success
       ? result.translatedContent?.segments
@@ -2886,7 +3151,8 @@ function retryTranslationSegment(index, generation) {
 
 /**
  * Renders immediately, translates the first small batch, then observes the
- * remaining rows. Batches are sequential so the provider is never flooded.
+ * remaining rows. A few batches run at once, capped by
+ * TRANSCRIPT_BATCH_CONCURRENCY, so the provider is not flooded.
  */
 async function translateTranscript() {
   const segments = getActiveTranscriptSegments();
@@ -2900,25 +3166,31 @@ async function translateTranscript() {
   const rows = renderTranscriptModeRows(segments, mode);
   const queue = [];
   const queued = new Set();
-  let processing = false;
+  let running = 0;
+  let startScheduled = false;
 
   const processNext = async () => {
-    if (processing || queue.length === 0 || generation !== translationGeneration)
-      return;
-    processing = true;
-    const indices = queue.splice(0, TRANSLATION_BATCH_SIZE);
-    indices.forEach((index) => queued.delete(index));
-    try {
-      await requestTranscriptTranslationBatch(
+    // Start as many batches as there are free slots and queued rows.
+    while (
+      running < TRANSCRIPT_BATCH_CONCURRENCY &&
+      queue.length > 0 &&
+      generation === translationGeneration
+    ) {
+      running += 1;
+      const indices = queue.splice(0, TRANSLATION_BATCH_SIZE);
+      indices.forEach((index) => queued.delete(index));
+      void requestTranscriptTranslationBatch(
         indices,
         segments,
         generation,
         videoId,
         mode,
-      );
-    } finally {
-      processing = false;
-      if (queue.length && generation === translationGeneration) processNext();
+      ).finally(() => {
+        running -= 1;
+        if (queue.length && generation === translationGeneration) {
+          void processNext();
+        }
+      });
     }
   };
 
@@ -2930,9 +3202,15 @@ async function translateTranscript() {
     if ((!force && cached) || queued.has(index)) return;
     queue.push(index);
     queued.add(index);
-    // Let all entries reported in the same viewport turn collect before the
-    // worker starts, producing one small contextual multi-segment request.
-    Promise.resolve().then(processNext);
+    // Let all entries added in the same turn collect before the workers start,
+    // producing small contextual multi-segment requests. One start per turn.
+    if (!startScheduled) {
+      startScheduled = true;
+      Promise.resolve().then(() => {
+        startScheduled = false;
+        void processNext();
+      });
+    }
   };
   activeTranslationQueue = { enqueue };
 
@@ -2956,8 +3234,22 @@ async function translateTranscript() {
 
   rows.forEach((row, index) => {
     if (!row.classList.contains("translated")) transcriptScrollObserver.observe(row);
-    if (index < TRANSLATION_BATCH_SIZE) enqueue(index);
   });
+
+  // Start the whole transcript right away instead of waiting for scrolling.
+  // The rows on screen go first, then the rest in reading order, and up to
+  // TRANSCRIPT_BATCH_CONCURRENCY batches are in flight at once. The scroll
+  // observer stays as a safety net and re-queues any row that was missed.
+  const contentArea = document.getElementById("contentArea");
+  const areaTop = contentArea?.scrollTop || 0;
+  const visibleStart = rows.findIndex(
+    (row) => (row.offsetTop || 0) + (row.offsetHeight || 0) >= areaTop,
+  );
+  const first = visibleStart === -1 ? 0 : visibleStart;
+  const order = [];
+  for (let i = first; i < rows.length; i += 1) order.push(i);
+  for (let i = 0; i < first; i += 1) order.push(i);
+  order.forEach((index) => enqueue(index));
 }
 
 function setTranslatingSpinner(show) {
@@ -2972,6 +3264,9 @@ function setTranslatingSpinner(show) {
 // not read this object at runtime.
 globalThis.__YTD_TRANSCRIPT_TESTING__ = {
   sendTranslationMessage,
+  sendMessageWithTimeout,
+  isChineseText,
+  isChineseTranscript,
   groupTranscriptEntries,
   splitOversizedThought,
   alignTranslatedSegmentBatch,

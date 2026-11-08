@@ -261,15 +261,21 @@ test("new videos default to Original while returning videos restore their choice
 test("Overview shares the Transcript batch generation and retries when opened", () => {
   const js = read("sidepanel.js");
   const transcriptFunction = js.match(
-    /async function translateTranscript\(\)[\s\S]*?\n}\n\nfunction setTranslatingSpinner/,
+    /async function translateTranscript\(\)[\s\S]*?\r?\n}\r?\n\r?\nfunction setTranslatingSpinner/,
   )?.[0];
 
   assert.ok(transcriptFunction);
   assert.doesNotMatch(transcriptFunction, /translationGeneration \+= 1/);
   assert.match(js, /const TRANSLATION_BATCH_SIZE = 3/);
+  // Overview and Notes use larger batches and a few parallel workers, but each
+  // batch is still shown and saved as soon as it returns.
+  assert.match(js, /const INTERFACE_BATCH_SIZE = 4/);
+  assert.match(js, /const TRANSLATION_CONCURRENCY = 50/);
+  assert.match(js, /const INTERFACE_BATCH_CONCURRENCY = TRANSLATION_CONCURRENCY/);
+  assert.match(js, /const TRANSCRIPT_BATCH_CONCURRENCY = TRANSLATION_CONCURRENCY/);
   assert.match(
     js,
-    /const batch = missing\.slice\(start, start \+ TRANSLATION_BATCH_SIZE\)[\s\S]*?rerender\(\);[\s\S]*?await updateCache\(\)/,
+    /missing\.slice\(at, at \+ INTERFACE_BATCH_SIZE\)[\s\S]*?rerender\(\);[\s\S]*?await updateCache\(\)/,
   );
   assert.match(
     js,
@@ -492,7 +498,8 @@ test("subtitle markup renderer keeps attributed and arbitrary HTML escaped", () 
 test("background rejects unsupported language fallthrough and malformed batches", () => {
   const source = read("background.js");
   const { validateTranscriptBatchRequest } = loadBackgroundHelpers();
-  assert.match(source, /targetLanguage !== "zh"/);
+  // Only the listed targets (Chinese, and English for Chinese subtitles) pass.
+  assert.match(source, /TRANSLATION_TARGETS\[targetLanguage\]/);
   assert.match(source, /\["transcriptBatch", "interfaceBatch"\]/);
   assert.throws(
     () => validateTranscriptBatchRequest({ segments: [] }),
@@ -895,4 +902,360 @@ test("AI requests fail clearly when no model is selected", async () => {
     () => requestAiCompletion({ maxTokens: 8, messages: [] }),
     (error) => error.code === "NO_AI_MODEL",
   );
+});
+
+test("sendMessageWithTimeout settles on a reply, an error, or the timeout", async () => {
+  let timeoutCallback;
+  let timeoutDelay;
+  const timeoutText = "took too long";
+  const slow = loadSidepanelHelpers({
+    sendMessage: () => new Promise(() => {}),
+    setTimeoutImpl(callback, delay) {
+      timeoutCallback = callback;
+      timeoutDelay = delay;
+      return 1;
+    },
+  });
+  const pending = slow.sendMessageWithTimeout({ action: "getNotes" }, 15_000, timeoutText);
+  assert.equal(timeoutDelay, 15_000);
+  timeoutCallback();
+  await assert.rejects(pending, /took too long/);
+
+  const ok = loadSidepanelHelpers({
+    sendMessage: async () => ({ success: true, notes: [] }),
+  });
+  assert.deepEqual(
+    await ok.sendMessageWithTimeout({ action: "getNotes" }, 15_000, timeoutText),
+    { success: true, notes: [] },
+  );
+
+  const failing = loadSidepanelHelpers({
+    sendMessage: async () => {
+      throw new Error("worker stopped");
+    },
+  });
+  await assert.rejects(
+    failing.sendMessageWithTimeout({ action: "getNotes" }, 15_000, timeoutText),
+    /worker stopped/,
+  );
+});
+
+test("Overview and Notes requests cannot wait on the message channel forever", () => {
+  const js = read("sidepanel.js");
+  const analysis = js.match(/async function triggerAnalysis\(\)[\s\S]*?\r?\n}\r?\n/)?.[0] || "";
+  const notes = js.match(/async function loadNotes\(videoId\)[\s\S]*?\r?\n}\r?\n/)?.[0] || "";
+
+  assert.match(analysis, /sendMessageWithTimeout\(/);
+  assert.match(analysis, /action: "analyzeTranscript"/);
+  assert.doesNotMatch(analysis, /chrome\.runtime\.sendMessage\(/);
+  assert.match(notes, /sendMessageWithTimeout\(/);
+  assert.match(notes, /action: "getNotes"/);
+  assert.doesNotMatch(notes, /chrome\.runtime\.sendMessage\(/);
+  // Reopening the same video must not clear the in-flight flag of a running analysis.
+  assert.match(js, /if \(videoChanged\) isAnalysisLoading = false;/);
+  assert.doesNotMatch(js, /\n\s{2,4}isAnalysisLoading = false;\r?\n\s*\r?\n\s*\/\/ Restore semantic/);
+});
+
+const analysisReply = JSON.stringify({
+  chapters: [{ title: "Intro", timestamp: "0:00", timestampSeconds: 0, summary: "s" }],
+  keyQuotes: [{ quote: "q", timestamp: "1:30", timestampSeconds: 90 }],
+  keyMoments: [0],
+});
+
+function sseResponse(pieces) {
+  const lines = pieces.map(
+    (piece) => `data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`,
+  );
+  lines.push("data: [DONE]\n\n");
+  return streamingResponse(lines.map(encode));
+}
+
+const promptFetch = (handler) => async (url, options) => {
+  if (String(url).startsWith("chrome-extension://")) {
+    return { ok: true, status: 200, text: async () => read(String(url).replace("chrome-extension://test/", "")) };
+  }
+  return handler(JSON.parse(options.body));
+};
+
+test("overview analysis streams so a slow model is not cut off as inactive", async () => {
+  const bodies = [];
+  const half = Math.floor(analysisReply.length / 2);
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: promptFetch(async (body) => {
+      bodies.push(body);
+      return sseResponse([analysisReply.slice(0, half), analysisReply.slice(half)]);
+    }),
+  });
+
+  const result = await helpers.handleAnalyzeTranscript(
+    "[0:00] hello [1:30] world", "Title", "Channel", "Description", 200,
+  );
+  assert.equal(result.success, true);
+  assert.equal(result.analysis.chapters[0].title, "Intro");
+  assert.equal(bodies.length, 1);
+  assert.equal(bodies[0].stream, true);
+});
+
+test("overview analysis accepts a plain JSON reply when the gateway ignores streaming", async () => {
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: promptFetch(async () =>
+      streamingResponse([encode(JSON.stringify({ choices: [{ message: { content: analysisReply } }] }))]),
+    ),
+  });
+  const result = await helpers.handleAnalyzeTranscript("[0:00] hi", "T", "C", "D", 100);
+  assert.equal(result.success, true);
+  assert.equal(result.analysis.keyQuotes[0].quote, "q");
+});
+
+test("overview analysis falls back step by step when the gateway rejects parameters", async () => {
+  const attempts = [];
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: promptFetch(async (body) => {
+      attempts.push({ stream: body.stream === true, format: Boolean(body.response_format) });
+      // This gateway rejects response_format but accepts streaming.
+      if (body.response_format) {
+        return streamingResponse([encode(JSON.stringify({ error: { message: "bad param" } }))], {
+          ok: false,
+          status: 400,
+        });
+      }
+      return sseResponse([analysisReply]);
+    }),
+  });
+  const result = await helpers.handleAnalyzeTranscript("[0:00] hi", "T", "C", "D", 100);
+  assert.equal(result.success, true);
+  assert.deepEqual(attempts, [
+    { stream: true, format: true },
+    { stream: true, format: false },
+  ]);
+});
+
+test("overview analysis does not retry on errors that a new request cannot fix", async () => {
+  let calls = 0;
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: promptFetch(async () => {
+      calls += 1;
+      return streamingResponse([encode(JSON.stringify({ error: { message: "bad token" } }))], {
+        ok: false,
+        status: 401,
+      });
+    }),
+  });
+  const result = await helpers.handleAnalyzeTranscript("[0:00] hi", "T", "C", "D", 100);
+  assert.equal(result.success, false);
+  assert.equal(result.error, "INVALID_AI_KEY");
+  assert.equal(calls, 1);
+});
+
+test("overview analysis retries once without streaming when the gateway rejects it", async () => {
+  const streamFlags = [];
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: promptFetch(async (body) => {
+      streamFlags.push(body.stream === true);
+      if (body.stream) {
+        return streamingResponse([encode(JSON.stringify({ error: { message: "no stream" } }))], {
+          ok: false,
+          status: 400,
+        });
+      }
+      return streamingResponse([encode(JSON.stringify({ choices: [{ message: { content: analysisReply } }] }))]);
+    }),
+  });
+  const result = await helpers.handleAnalyzeTranscript("[0:00] hi", "T", "C", "D", 100);
+  assert.equal(result.success, true);
+  // Streaming with response_format, streaming without it, then a plain request.
+  assert.deepEqual(streamFlags, [true, true, false]);
+});
+
+test("a streamed error event is reported instead of an empty overview", async () => {
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: promptFetch(async () =>
+      streamingResponse([encode(`data: ${JSON.stringify({ error: { message: "model overloaded" } })}\n\n`)]),
+    ),
+  });
+  const result = await helpers.handleAnalyzeTranscript("[0:00] hi", "T", "C", "D", 100);
+  assert.equal(result.success, false);
+  assert.match(result.error, /model overloaded/);
+});
+
+test("overview analysis waits longer than short requests before giving up", async () => {
+  const timers = createFakeTimers();
+  const helpers = loadBackgroundHelpers({
+    setTimeoutImpl: timers.setTimeout,
+    clearTimeoutImpl: timers.clearTimeout,
+    fetchImpl: promptFetch(async () => sseResponse([analysisReply])),
+  });
+  const result = await helpers.handleAnalyzeTranscript("[0:00] hi", "T", "C", "D", 100);
+  assert.equal(result.success, true);
+  // The overview uses the longer idle and hard limits, never the 50 and 120 second ones.
+  assert.ok(timers.createdCount(90_000) >= 1, "Expected a 90 second idle timer");
+  assert.equal(timers.createdCount(240_000), 1);
+  assert.equal(timers.createdCount(50_000), 0);
+  assert.equal(timers.createdCount(120_000), 0);
+  // The service worker keepalive stops when the request ends.
+  assert.equal(timers.activeCount(20_000), 0);
+});
+
+test("short AI requests keep their 50 and 120 second limits", async () => {
+  const timers = createFakeTimers();
+  const helpers = loadBackgroundHelpers({
+    setTimeoutImpl: timers.setTimeout,
+    clearTimeoutImpl: timers.clearTimeout,
+    fetchImpl: async () =>
+      streamingResponse([encode('{"choices":[{"message":{"content":"ok"}}]}')]),
+  });
+  await helpers.callAiTranslation("Translate.", "Hello.");
+  assert.ok(timers.createdCount(50_000) >= 1);
+  assert.equal(timers.createdCount(120_000), 1);
+  assert.equal(timers.createdCount(90_000), 0);
+  assert.equal(timers.createdCount(240_000), 0);
+});
+
+test("Overview shows progress while streaming and offers Retry after a failure", () => {
+  const js = read("sidepanel.js");
+  const css = read("sidepanel.css");
+  assert.match(js, /message\.action === "analysisProgress"[\s\S]*?showAnalysisProgress\(/);
+  assert.match(js, /Writing the overview\.\.\. \$\{kb\} KB received/);
+  assert.match(js, /id="analysisRetryBtn"/);
+  assert.match(js, /getElementById\("analysisRetryBtn"\)[\s\S]*?addEventListener\("click", retryAnalysis\)/);
+  assert.match(css, /\.analysis-retry-btn:focus-visible\s*\{/);
+  assert.doesNotMatch(js, /Switch tabs and try again\.<\/div>`/);
+});
+
+test("connection test sends one tiny chat request to the fixed gateway", async () => {
+  const seen = [];
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: async (url, options) => {
+      seen.push({ url, headers: options.headers, body: JSON.parse(options.body) });
+      return streamingResponse([encode('{"choices":[{"message":{"content":"OK"}}]}')]);
+    },
+  });
+  const result = await helpers.handleTestConnection("typed-token", "model-x");
+  assert.equal(result.success, true);
+  assert.equal(result.model, "model-x");
+  assert.equal(typeof result.latencyMs, "number");
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].url, "https://api.meding.site/v1/chat/completions");
+  assert.equal(seen[0].headers.Authorization, "Bearer typed-token");
+  assert.equal(seen[0].body.model, "model-x");
+  assert.equal(seen[0].body.max_tokens, 8);
+});
+
+test("connection test reports each failure kind without throwing", async () => {
+  const run = async (fetchImpl, key = "tok", model = "m") =>
+    loadBackgroundHelpers({ fetchImpl, settings: { provider: "openai-compatible", aiApiKey: "", aiModel: "" } })
+      .handleTestConnection(key, model);
+  const reply = (status, body) => async () =>
+    streamingResponse([encode(JSON.stringify(body))], { ok: status < 400, status });
+
+  assert.equal((await run(reply(401, { error: { message: "bad" } }))).error, "INVALID_AI_KEY");
+  assert.equal((await run(reply(429, {}))).error, "RATE_LIMITED");
+  const failed = await run(reply(500, { error: { message: "upstream down" } }));
+  assert.equal(failed.error, "CONNECTION_FAILED");
+  assert.equal(failed.message, "upstream down");
+  assert.equal((await run(reply(200, { hello: "world" }))).error, "UNEXPECTED_RESPONSE");
+  assert.equal((await run(async () => { throw new TypeError("offline"); })).error, "NETWORK");
+  assert.equal((await run(async () => { throw Object.assign(new Error("a"), { name: "AbortError" }); })).error, "TIMEOUT");
+  assert.equal((await run(reply(200, {}), "", "m")).error, "NO_AI_KEY");
+  assert.equal((await run(reply(200, {}), "tok", "")).error, "NO_AI_MODEL");
+});
+
+test("Chinese subtitles are detected from the text, not from a language tag", () => {
+  const { isChineseText, isChineseTranscript } = loadSidepanelHelpers();
+  assert.equal(isChineseText("大家好，欢迎来到今天的节目，我们聊聊缓存。"), true);
+  // Names, numbers and a little English inside Chinese do not flip the result.
+  assert.equal(isChineseText("今天我们用 Claude Code 写了 3 个 API，效果很好，大家可以试试看。"), true);
+  assert.equal(isChineseText("Today we talk about caching and why it matters."), false);
+  // Mostly English with a Chinese title is still English.
+  assert.equal(
+    isChineseText("缓存教程 This whole talk is in English and explains caching in depth for beginners."),
+    false,
+  );
+  assert.equal(isChineseText("123 456 !!!"), false);
+
+  const zh = Array.from({ length: 120 }, (_, i) => ({ start: i, text: `这是第 ${i} 句中文字幕内容。` }));
+  // An English intro and outro do not decide a Chinese video.
+  zh[0] = { start: 0, text: "Hello everyone, welcome back to the channel." };
+  zh[119] = { start: 119, text: "Thanks for watching, see you next time." };
+  assert.equal(isChineseTranscript(zh), true);
+  const en = Array.from({ length: 50 }, (_, i) => ({ start: i, text: `This is English line number ${i}.` }));
+  assert.equal(isChineseTranscript(en), false);
+  assert.equal(isChineseTranscript([]), false);
+});
+
+test("Chinese-subtitle videos hide the Chinese-only view and translate into English", () => {
+  const js = read("sidepanel.js");
+  // The Chinese-only view would repeat the original, so it is hidden and blocked.
+  assert.match(js, /handleDisplayLanguageModeChange\(mode\)[\s\S]*?currentTranscriptIsChinese && mode === "zh"\) return;/);
+  assert.match(js, /button\.hidden = chinese && chineseOnly;/);
+  assert.match(js, /if \(chinese && currentTranscriptMode === "zh"\) \{\s*currentTranscriptMode = "bilingual";/);
+  // Bilingual stays available, and its translation target is English.
+  assert.match(js, /function translationTarget\(\)\s*\{\s*return currentTranscriptIsChinese \? "en" : "zh";/);
+  // Interface batches ask for the current target; transcript batches capture it
+  // when sent, so a late reply is stored under the language it was asked for.
+  assert.match(js, /contentType: "interfaceBatch",\s*targetLanguage: translationTarget\(\)/);
+  assert.match(js, /const requestTarget = translationTarget\(\);/);
+  assert.match(js, /targetLanguage: requestTarget/);
+  assert.doesNotMatch(js, /targetLanguage: "zh"/);
+  // English and Chinese translations of one segment never share a cache entry.
+  assert.match(js, /\$\{currentVideoId\}:\$\{translationTarget\(\)\}:semantic:/);
+  // Every place that sets a new transcript re-checks the language.
+  assert.equal((js.match(/applySubtitleLanguageRules\(\);/g) || []).length >= 3, true);
+});
+
+test("English is a supported translation target with its own rules and check", async () => {
+  const bg = loadBackgroundHelpers();
+  const prompt = read("prompts/translation.md");
+  assert.match(prompt, /^## English rules$/m);
+  assert.match(prompt, /Write Chinese personal names in pinyin/);
+  assert.doesNotMatch(prompt, /NOT English syntax translated word-by-word/);
+
+  const source = [{ id: "a", text: "大家好，欢迎来到今天的节目。" }];
+  const english = bg.normalizeTranslatedSegmentBatch(
+    { segments: [{ id: "a", text: "Hello everyone, welcome to today's show." }] },
+    source,
+    "en",
+  );
+  assert.equal(english.segments[0].text, "Hello everyone, welcome to today's show.");
+  // Handing the Chinese back, or a reply with no English, is rejected.
+  const echoed = bg.normalizeTranslatedSegmentBatch(
+    { segments: [{ id: "a", text: "大家好，欢迎来到今天的节目。" }] },
+    source,
+    "en",
+  );
+  assert.equal(echoed.segments[0].text, "");
+  assert.equal(echoed.segments[0].error, "Missing or invalid translation");
+  // The default target is still Chinese.
+  const toChinese = bg.normalizeTranslatedSegmentBatch(
+    { segments: [{ id: "a", text: "你好，世界" }] },
+    [{ id: "a", text: "Hello there, this is a fairly long English sentence." }],
+  );
+  assert.equal(toChinese.segments[0].text, "你好，世界");
+
+  const requests = [];
+  const helpers = loadBackgroundHelpers({
+    fetchImpl: async (url, options) => {
+      if (String(url).startsWith("chrome-extension://")) {
+        return { ok: true, status: 200, text: async () => read(String(url).replace("chrome-extension://test/", "")) };
+      }
+      requests.push(JSON.parse(options.body));
+      return streamingResponse([
+        encode(JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({ segments: [{ id: "a", text: "Hello everyone, welcome to the show." }] }) } }],
+        })),
+      ]);
+    },
+  });
+  const result = await helpers.handleTranslateContent(
+    { segments: source },
+    "transcriptBatch",
+    "en",
+    "Title",
+  );
+  assert.equal(result.success, true);
+  assert.match(requests[0].messages[0].content, /Translate the transcript segments into English/);
+  assert.match(requests[0].messages[0].content, /clear, natural, modern English/);
+  const rejected = await helpers.handleTranslateContent({ segments: source }, "transcriptBatch", "fr", "T");
+  assert.equal(rejected.success, false);
+  assert.match(rejected.error, /Unsupported translation target/);
 });

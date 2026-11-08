@@ -19,6 +19,18 @@ const DEBUG = false;
 const AI_PROVIDER_IDLE_TIMEOUT_MS = 50_000;
 const AI_PROVIDER_HARD_TIMEOUT_MS = 120_000;
 const AI_PROVIDER_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+// The overview writes chapters for the whole video, so it gets more patience
+// than a short translation batch. The side panel waits a little longer still.
+const ANALYSIS_IDLE_TIMEOUT_MS = 90_000;
+const ANALYSIS_HARD_TIMEOUT_MS = 240_000;
+// Chrome stops an extension service worker about 30 seconds after its last
+// event or extension API call, and also when a fetch() takes longer than that
+// to answer. An extension API call resets the timer, so a request in flight
+// pings one every 20 seconds.
+const SERVICE_WORKER_KEEPALIVE_MS = 20_000;
+// Each streamed token carries a small event wrapper, so a streamed reply is
+// larger on the wire than the same text in one JSON body.
+const AI_PROVIDER_MAX_STREAM_BYTES = 8 * 1024 * 1024;
 const debugLog = (...args) => {
   if (DEBUG) console.log(...args);
 };
@@ -121,17 +133,136 @@ function describeAiSetupProblem(settings) {
   return null;
 }
 
+const CONNECTION_TEST_TIMEOUT_MS = 20_000;
+
+/**
+ * Settings "Test connection". Sends one tiny chat request with the token and
+ * model currently shown on the Settings page, so the result says whether that
+ * exact pair works before it is saved. The token goes only to the fixed gateway.
+ */
+async function handleTestConnection(apiKeyInput, modelInput) {
+  const typed = typeof apiKeyInput === "string" ? apiKeyInput.trim() : "";
+  const saved = await getSettings();
+  const apiKey = typed || saved.aiApiKey;
+  const model = YTD_SETTINGS.normalizeModel(modelInput) || saved.aiModel;
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "NO_AI_KEY",
+      message: "Enter your API token first.",
+    };
+  }
+  if (!model) {
+    return {
+      success: false,
+      error: "NO_AI_MODEL",
+      message: "Choose a model first.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    CONNECTION_TEST_TIMEOUT_MS,
+  );
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(YTD_SETTINGS.chatCompletionsUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 8,
+        temperature: 0,
+        messages: [{ role: "user", content: "Reply with OK." }],
+      }),
+      signal: controller.signal,
+    });
+    if (response.status === 401 || response.status === 403) {
+      return {
+        success: false,
+        error: "INVALID_AI_KEY",
+        message: "The API token was rejected.",
+      };
+    }
+    if (response.status === 429) {
+      return {
+        success: false,
+        error: "RATE_LIMITED",
+        message: "The gateway rate-limited this request.",
+      };
+    }
+
+    let data = null;
+    try {
+      data = await readBoundedAiResponse(response, () => {});
+    } catch (_error) {
+      data = null;
+    }
+    if (!response.ok) {
+      const detail = String(data?.error?.message || data?.message || "")
+        .trim()
+        .slice(0, 160);
+      return {
+        success: false,
+        error: "CONNECTION_FAILED",
+        status: response.status,
+        message: detail || `HTTP ${response.status}`,
+      };
+    }
+    if (!Array.isArray(data?.choices) || !data.choices.length) {
+      return {
+        success: false,
+        error: "UNEXPECTED_RESPONSE",
+        message: "The gateway answered, but not with a chat completion.",
+      };
+    }
+    return { success: true, model, latencyMs: Date.now() - startedAt };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return {
+        success: false,
+        error: "TIMEOUT",
+        message: "The gateway did not answer in time.",
+      };
+    }
+    return {
+      success: false,
+      error: "NETWORK",
+      message: "Could not reach the gateway.",
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 const promptFileCache = new Map();
+const promptFilePending = new Map();
 
 async function loadPromptSection(fileName, heading, variables = {}) {
   let markdown = promptFileCache.get(fileName);
   if (!markdown) {
-    const response = await fetch(chrome.runtime.getURL(`prompts/${fileName}`));
-    if (!response.ok) {
-      throw new Error(`Could not load prompt file: ${fileName}`);
+    // Many requests can start together. They share one in-flight download of
+    // the file instead of each fetching it.
+    let pending = promptFilePending.get(fileName);
+    if (!pending) {
+      pending = (async () => {
+        const response = await fetch(
+          chrome.runtime.getURL(`prompts/${fileName}`),
+        );
+        if (!response.ok) {
+          throw new Error(`Could not load prompt file: ${fileName}`);
+        }
+        const text = await response.text();
+        promptFileCache.set(fileName, text);
+        return text;
+      })().finally(() => promptFilePending.delete(fileName));
+      promptFilePending.set(fileName, pending);
     }
-    markdown = await response.text();
-    promptFileCache.set(fileName, markdown);
+    markdown = await pending;
   }
 
   const marker = `## ${heading}`;
@@ -157,11 +288,153 @@ async function loadPromptSection(fileName, heading, variables = {}) {
   return prompt;
 }
 
+/**
+ * Keeps the service worker alive until the returned function is called.
+ * Best effort: a failed ping never affects the request, which still has its own
+ * idle and hard timeouts.
+ */
+function startServiceWorkerKeepAlive() {
+  let timerId;
+  let stopped = false;
+  const ping = () => {
+    if (stopped) return;
+    try {
+      Promise.resolve(chrome.runtime.getPlatformInfo?.()).catch(() => {});
+    } catch (_error) {
+      // Ignore. See above.
+    }
+    timerId = setTimeout(ping, SERVICE_WORKER_KEEPALIVE_MS);
+  };
+  timerId = setTimeout(ping, SERVICE_WORKER_KEEPALIVE_MS);
+  return () => {
+    stopped = true;
+    clearTimeout(timerId);
+  };
+}
+
+/**
+ * Tells the side panel how much of the overview has arrived, at most once a
+ * second, so it can show that the request is alive instead of a bare "Loading".
+ */
+function createAnalysisProgressReporter(videoId, maxSeconds, send) {
+  let lastSent = 0;
+  let sentChapters = 0;
+  let sentQuotes = 0;
+  const deliver =
+    send ||
+    ((message) =>
+      Promise.resolve(chrome.runtime.sendMessage(message)).catch(() => {}));
+  const post = (payload) => {
+    try {
+      deliver({ action: "analysisProgress", videoId, ...payload });
+    } catch (_error) {
+      // The panel may be closed. Nothing is waiting for this message.
+    }
+  };
+
+  return (bytes, rawText) => {
+    // Pull completed chapters and quotes out of the reply while it is still
+    // being written, so the panel can show them right away. Only items that are
+    // new since the last message are sent, each already validated.
+    if (typeof rawText === "string") {
+      const content = extractStreamedContent(rawText);
+      const chapters = extractCompletedItems(content, "chapters");
+      const quotes = extractCompletedItems(content, "keyQuotes");
+      if (chapters.length > sentChapters || quotes.length > sentQuotes) {
+        const safe = validateAndFixTimestamps(
+          { chapters, keyQuotes: quotes, keyMoments: [] },
+          maxSeconds,
+        );
+        sentChapters = chapters.length;
+        sentQuotes = quotes.length;
+        post({ bytes, partial: safe });
+        lastSent = Date.now();
+        return;
+      }
+    }
+    const now = Date.now();
+    if (now - lastSent < 1000) return;
+    lastSent = now;
+    post({ bytes });
+  };
+}
+
+/** Joins the text pieces of a streamed reply into the model's JSON so far. */
+function extractStreamedContent(rawText) {
+  if (rawText.trimStart().startsWith("{")) return rawText;
+  let content = "";
+  for (const line of rawText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+    try {
+      const choice = JSON.parse(payload)?.choices?.[0];
+      const piece = choice?.delta?.content ?? choice?.message?.content;
+      if (typeof piece === "string") content += piece;
+    } catch (_error) {
+      // A half-received line is finished by the next chunk.
+    }
+  }
+  return content;
+}
+
+/**
+ * Returns the finished objects of one top-level array from a JSON string that
+ * may still be incomplete. Braces and quotes inside strings are handled, so
+ * text such as "{" in a chapter title cannot end an object early.
+ */
+function extractCompletedItems(partial, key) {
+  const keyAt = partial.indexOf(`"${key}"`);
+  if (keyAt === -1) return [];
+  const open = partial.indexOf("[", keyAt);
+  if (open === -1) return [];
+  const items = [];
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let itemStart = -1;
+  for (let i = open + 1; i < partial.length; i += 1) {
+    const ch = partial[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      if (depth === 0) itemStart = i;
+      depth += 1;
+    } else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0 && itemStart !== -1) {
+        try {
+          items.push(JSON.parse(partial.slice(itemStart, i + 1)));
+        } catch (_error) {
+          // Skip an object the model wrote badly. The final parse still runs.
+        }
+        itemStart = -1;
+      }
+    } else if (ch === "]" && depth === 0) {
+      break;
+    }
+  }
+  return items;
+}
+
 async function requestAiCompletion({
   messages,
   maxTokens,
   temperature,
   responseFormat,
+  stream = false,
+  // The overview is the longest reply, so it may ask for more patience. Every
+  // other request keeps the 50 and 120 second defaults.
+  idleTimeoutMs = AI_PROVIDER_IDLE_TIMEOUT_MS,
+  hardTimeoutMs = AI_PROVIDER_HARD_TIMEOUT_MS,
+  onProgress,
 }) {
   const settings = await getSettings();
   if (!settings.aiApiKey) {
@@ -187,6 +460,9 @@ async function requestAiCompletion({
   if (responseFormat) {
     body.response_format = responseFormat;
   }
+  // Streaming makes the gateway send tokens as they are produced. Every chunk
+  // resets the idle timer, so a long reply is not mistaken for a dead connection.
+  if (stream) body.stream = true;
 
   const controller = new AbortController();
   let timeoutKind = "";
@@ -201,15 +477,16 @@ async function requestAiCompletion({
     clearTimeout(idleTimeoutId);
     idleTimeoutId = setTimeout(
       () => abortForTimeout("idle"),
-      AI_PROVIDER_IDLE_TIMEOUT_MS,
+      idleTimeoutMs,
     );
   };
 
   hardTimeoutId = setTimeout(
     () => abortForTimeout("hard"),
-    AI_PROVIDER_HARD_TIMEOUT_MS,
+    hardTimeoutMs,
   );
   resetIdleTimeout();
+  const stopKeepAlive = startServiceWorkerKeepAlive();
   try {
     const response = await fetch(
       YTD_SETTINGS.chatCompletionsUrl(),
@@ -227,7 +504,22 @@ async function requestAiCompletion({
     // may then send blank-line body chunks while a non-streaming request queues.
     resetIdleTimeout();
 
-    const data = await readBoundedAiResponse(response, resetIdleTimeout);
+    let data;
+    try {
+      data = await readBoundedAiResponse(
+        response,
+        resetIdleTimeout,
+        stream ? AI_PROVIDER_MAX_STREAM_BYTES : AI_PROVIDER_MAX_RESPONSE_BYTES,
+        onProgress,
+      );
+    } catch (readError) {
+      // An error status with an HTML or empty body (typical for 502/504 from a
+      // proxy) is not valid JSON. Report the status, which is what matters.
+      if (response.ok || readError?.code === "AI_RESPONSE_TOO_LARGE") {
+        throw readError;
+      }
+      data = null;
+    }
     if (!response.ok) {
       const errorData = data && typeof data === "object" ? data : {};
       const error = new Error(
@@ -236,6 +528,10 @@ async function requestAiCompletion({
           `AI provider error: ${response.status}`,
       );
       error.status = response.status;
+      const retryAfter = Number(response.headers?.get?.("retry-after"));
+      if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        error.retryAfterMs = Math.min(retryAfter, 30) * 1000;
+      }
       throw error;
     }
 
@@ -250,14 +546,14 @@ async function requestAiCompletion({
   } catch (error) {
     if (timeoutKind === "idle") {
       const timeoutError = new Error(
-        "The AI request was inactive for 50 seconds. Please Retry.",
+        `The AI request was inactive for ${idleTimeoutMs / 1000} seconds. Please Retry.`,
       );
       timeoutError.code = "AI_IDLE_TIMEOUT";
       throw timeoutError;
     }
     if (timeoutKind === "hard") {
       const timeoutError = new Error(
-        "The AI request exceeded the 120-second limit. Please Retry.",
+        `The AI request exceeded the ${hardTimeoutMs / 1000}-second limit. Please Retry.`,
       );
       timeoutError.code = "AI_HARD_TIMEOUT";
       throw timeoutError;
@@ -266,10 +562,16 @@ async function requestAiCompletion({
   } finally {
     clearTimeout(idleTimeoutId);
     clearTimeout(hardTimeoutId);
+    stopKeepAlive();
   }
 }
 
-async function readBoundedAiResponse(response, onActivity) {
+async function readBoundedAiResponse(
+  response,
+  onActivity,
+  maxBytes = AI_PROVIDER_MAX_RESPONSE_BYTES,
+  onProgress,
+) {
   const reader = response.body?.getReader?.();
   if (reader) {
     const decoder = new TextDecoder();
@@ -282,16 +584,17 @@ async function readBoundedAiResponse(response, onActivity) {
       onActivity();
       const byteLength = value?.byteLength ?? 0;
       responseBytes += byteLength;
-      if (responseBytes > AI_PROVIDER_MAX_RESPONSE_BYTES) {
+      if (responseBytes > maxBytes) {
         await reader.cancel?.().catch(() => {});
         const error = new Error("The AI response exceeded the 2 MiB limit.");
         error.code = "AI_RESPONSE_TOO_LARGE";
         throw error;
       }
       responseText += decoder.decode(value, { stream: true });
+      onProgress?.(responseBytes, responseText);
     }
     responseText += decoder.decode();
-    return JSON.parse(responseText.trimStart());
+    return parseAiResponseText(responseText);
   }
 
   // Some fetch implementations do not expose a readable stream. Preserve a
@@ -300,12 +603,12 @@ async function readBoundedAiResponse(response, onActivity) {
     const responseText = await response.text();
     onActivity();
     const byteLength = new TextEncoder().encode(responseText).byteLength;
-    if (byteLength > AI_PROVIDER_MAX_RESPONSE_BYTES) {
+    if (byteLength > maxBytes) {
       const error = new Error("The AI response exceeded the 2 MiB limit.");
       error.code = "AI_RESPONSE_TOO_LARGE";
       throw error;
     }
-    return JSON.parse(responseText.trimStart());
+    return parseAiResponseText(responseText);
   }
 
   // Legacy/test fetch shims may expose only json(). The hard and idle timers
@@ -313,6 +616,48 @@ async function readBoundedAiResponse(response, onActivity) {
   const data = await response.json();
   onActivity();
   return data;
+}
+
+/**
+ * Parses a gateway body. A normal reply is one JSON object. A streamed reply is
+ * server-sent events: many "data: {...}" lines whose deltas add up to the full
+ * message. A gateway that ignores the stream flag and returns plain JSON still
+ * works, and so do JSON error bodies.
+ */
+function parseAiResponseText(rawText) {
+  const text = rawText.trimStart();
+  if (text.startsWith("{") || !/(^|\n)\s*data:/.test(text)) {
+    return JSON.parse(text);
+  }
+  return parseAiEventStream(text);
+}
+
+function parseAiEventStream(text) {
+  let content = "";
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+    const payload = trimmed.slice(5).trim();
+    if (!payload || payload === "[DONE]") continue;
+
+    let event;
+    try {
+      event = JSON.parse(payload);
+    } catch (_error) {
+      continue;
+    }
+    if (event?.error) {
+      throw new Error(
+        event.error.message ||
+          (typeof event.error === "string" ? event.error : "") ||
+          "The AI provider returned an error.",
+      );
+    }
+    const choice = event?.choices?.[0];
+    const piece = choice?.delta?.content ?? choice?.message?.content;
+    if (typeof piece === "string") content += piece;
+  }
+  return { choices: [{ message: { content } }] };
 }
 
 // ============================================================
@@ -455,6 +800,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       message.channelName,
       message.videoDescription,
       message.videoDuration,
+      message.videoId,
     )
       .then(sendResponse)
       .catch((err) => sendResponse({ error: err.message }));
@@ -534,6 +880,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }),
       )
       .catch((error) => sendResponse({ error: error.message }));
+    return true;
+  }
+
+  if (message.action === "testConnection") {
+    handleTestConnection(message.apiKey, message.model)
+      .then(sendResponse)
+      .catch((err) =>
+        sendResponse({
+          success: false,
+          error: "CONNECTION_FAILED",
+          message: err.message,
+        }),
+      );
     return true;
   }
 
@@ -1026,6 +1385,7 @@ async function handleAnalyzeTranscript(
   channelName,
   videoDescription,
   videoDuration,
+  videoId,
 ) {
   try {
     const settings = await getSettings();
@@ -1083,14 +1443,42 @@ async function handleAnalyzeTranscript(
     );
 
     debugLog("[Video Flow] Requesting video analysis", settings.aiModel);
-    const { text: responseText } = await requestAiCompletion({
+    const analysisRequest = {
       maxTokens: 8192,
-      responseFormat: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-    });
+      // The overview is the longest reply the extension asks for, so it waits
+      // longer than short requests and reports progress while it streams.
+      idleTimeoutMs: ANALYSIS_IDLE_TIMEOUT_MS,
+      hardTimeoutMs: ANALYSIS_HARD_TIMEOUT_MS,
+      onProgress: createAnalysisProgressReporter(videoId, maxTimestampSeconds),
+    };
+    // Streaming keeps the connection visibly active while the model writes.
+    // A gateway that rejects a parameter (HTTP 400 or 422) gets the next, more
+    // conservative attempt. The prompt already demands JSON and parseLooseJson
+    // tolerates stray prose, so dropping response_format is safe.
+    const attempts = [
+      { stream: true, responseFormat: { type: "json_object" } },
+      { stream: true },
+      { stream: false },
+    ];
+    let completion;
+    let lastError;
+    for (const attempt of attempts) {
+      try {
+        completion = await requestAiCompletion({ ...analysisRequest, ...attempt });
+        break;
+      } catch (attemptError) {
+        lastError = attemptError;
+        if (attemptError.status !== 400 && attemptError.status !== 422) {
+          throw attemptError;
+        }
+      }
+    }
+    if (!completion) throw lastError;
+    const { text: responseText } = completion;
 
     // Parse the JSON, tolerating trailing commas / stray prose
     let analysis = parseLooseJson(responseText);
@@ -1600,24 +1988,28 @@ async function handleExplainSelection(
 // ============================================================
 // Uses a low temperature for consistent, natural translations.
 
+// Translation targets. Chinese is the default. English is used when the
+// subtitles are already Chinese and the reader still wants a bilingual view.
+const TRANSLATION_TARGETS = Object.freeze({
+  zh: { langName: "Simplified Chinese", rules: "Chinese rules" },
+  en: { langName: "English", rules: "English rules" },
+});
+
 /**
  * Shared base rules that every translation prompt includes.
  * These ensure translations sound natural rather than machine-translated.
  *
- * @param {string} targetLanguage - Must be 'zh'
+ * @param {string} targetLanguage - 'zh' or 'en'
  * @returns {Promise<string>} - The base translation rules
  */
 async function getTranslationBaseRules(targetLanguage) {
-  if (targetLanguage !== "zh") {
+  const target = TRANSLATION_TARGETS[targetLanguage];
+  if (!target) {
     throw new Error(`Unsupported translation target: ${targetLanguage}`);
   }
-  const langName = "Simplified Chinese";
-  const langSpecific = await loadPromptSection(
-    "translation.md",
-    "Chinese rules",
-  );
+  const langSpecific = await loadPromptSection("translation.md", target.rules);
   return loadPromptSection("translation.md", "Shared base rules", {
-    langName,
+    langName: target.langName,
     langSpecific,
   });
 }
@@ -1656,10 +2048,30 @@ function looksLikeChineseTranslation(text, sourceText) {
 }
 
 /**
+ * A translation into English must contain English letters and must not just
+ * hand the Chinese source back. Very short sources (names, numbers) pass.
+ */
+function looksLikeEnglishTranslation(text, sourceText) {
+  const sourceHan = (sourceText.match(/[\u3400-\u9fff]/g) || []).length;
+  if (sourceHan < 4) return true;
+  const latinLetters = (text.match(/[A-Za-z]/g) || []).length;
+  const han = (text.match(/[\u3400-\u9fff]/g) || []).length;
+  return latinLetters >= 3 && han <= Math.max(2, latinLetters / 4);
+}
+
+/**
  * Aligns untrusted model output by exact stable ID. Missing, duplicated,
  * unknown, empty, or clearly non-Chinese values become explicit row errors.
  */
-function normalizeTranslatedSegmentBatch(parsed, sourceSegments) {
+function normalizeTranslatedSegmentBatch(
+  parsed,
+  sourceSegments,
+  targetLanguage = "zh",
+) {
+  const looksTranslated =
+    targetLanguage === "en"
+      ? looksLikeEnglishTranslation
+      : looksLikeChineseTranslation;
   const candidates = Array.isArray(parsed?.segments) ? parsed.segments : [];
   const sourceById = new Map(sourceSegments.map((segment) => [segment.id, segment]));
   const translatedById = new Map();
@@ -1675,7 +2087,7 @@ function normalizeTranslatedSegmentBatch(parsed, sourceSegments) {
     }
     const text = candidate.text.trim();
     const source = sourceById.get(candidate.id);
-    if (text && looksLikeChineseTranslation(text, source.text)) {
+    if (text && looksTranslated(text, source.text)) {
       translatedById.set(candidate.id, text);
     }
   });
@@ -1686,7 +2098,7 @@ function normalizeTranslatedSegmentBatch(parsed, sourceSegments) {
       text: translatedById.get(source.id) || "",
       error: translatedById.has(source.id)
         ? ""
-        : "Missing or invalid Chinese translation",
+        : "Missing or invalid translation",
     })),
   };
 }
@@ -1706,7 +2118,8 @@ async function handleTranslateContent(
   videoTitle,
 ) {
   try {
-    if (targetLanguage !== "zh") {
+    const target = TRANSLATION_TARGETS[targetLanguage];
+    if (!target) {
       return {
         success: false,
         error: `Unsupported translation target: ${String(targetLanguage)}`,
@@ -1724,7 +2137,7 @@ async function handleTranslateContent(
     if (aiSetupProblem) return aiSetupProblem;
 
     const sourceSegments = validateTranscriptBatchRequest(content);
-    const langName = "Simplified Chinese";
+    const langName = target.langName;
     const baseRules = await getTranslationBaseRules(targetLanguage);
     const promptSection =
       contentType === "transcriptBatch"
@@ -1745,7 +2158,7 @@ async function handleTranslateContent(
       maxTokens: 1536,
       responseFormat: { type: "json_object" },
     };
-    let result = await callAiTranslation(
+    let result = await callAiTranslationWithRetry(
       systemPrompt,
       userContent,
       translationOptions,
@@ -1754,7 +2167,7 @@ async function handleTranslateContent(
     // JSON mode can rarely return an empty content string. The prompt
     // already requires JSON, so retry once without response_format.
     if (!result.success && result.code === "EMPTY_AI_RESPONSE") {
-      result = await callAiTranslation(systemPrompt, userContent, {
+      result = await callAiTranslationWithRetry(systemPrompt, userContent, {
         temperature: translationOptions.temperature,
         maxTokens: translationOptions.maxTokens,
       });
@@ -1762,11 +2175,15 @@ async function handleTranslateContent(
     if (!result.success) return result;
 
     const parsed = parseLooseJson(result.text);
-    const aligned = normalizeTranslatedSegmentBatch(parsed, sourceSegments);
+    const aligned = normalizeTranslatedSegmentBatch(
+      parsed,
+      sourceSegments,
+      targetLanguage,
+    );
     if (!aligned.segments.some((segment) => segment.text)) {
       return {
         success: false,
-        error: "Translation returned no valid Chinese segments",
+        error: `Translation returned no valid ${langName} segments`,
       };
     }
     return { success: true, translatedContent: aligned };
@@ -1807,14 +2224,73 @@ async function callAiTranslation(
         success: false,
         error: "Rate limited — try again in a moment",
         code: "RATE_LIMITED",
+        status: 429,
+        retryAfterMs: error.retryAfterMs || 0,
       };
     }
-    return { success: false, error: error.message, code: error.code };
+    // A thrown fetch error with no HTTP status means the request never got an
+    // answer (offline, reset connection). That is worth another attempt too.
+    const networkFailure =
+      !error.status && !error.code && error?.name === "TypeError";
+    return {
+      success: false,
+      error: error.message,
+      code: networkFailure ? "NETWORK" : error.code,
+      status: error.status,
+    };
   }
+}
+
+// With many translation batches in flight, the gateway will sometimes answer
+// 429 (too many requests) or a short 5xx. Those pass on their own, so a failed
+// batch is tried again after a pause instead of becoming "Translation
+// unavailable". Rate limits wait longer and honor the gateway's own hint.
+const TRANSLATION_RETRY_DELAYS_MS = [700, 1800, 4000];
+// EMPTY_AI_RESPONSE is not listed: it has its own fix in handleTranslateContent
+// (ask again without response_format), and waiting here first would only slow
+// that fix down.
+const TRANSLATION_RETRYABLE_CODES = new Set([
+  "RATE_LIMITED",
+  "AI_IDLE_TIMEOUT",
+  "AI_HARD_TIMEOUT",
+  "NETWORK",
+]);
+
+function isRetryableTranslationFailure(result) {
+  if (result.success) return false;
+  if (TRANSLATION_RETRYABLE_CODES.has(result.code)) return true;
+  const status = Number(result.status);
+  return status === 408 || status === 409 || (status >= 500 && status <= 599);
+}
+
+function translationRetryDelay(result, attempt) {
+  const base = TRANSLATION_RETRY_DELAYS_MS[attempt];
+  const hinted = Number(result.retryAfterMs) || 0;
+  // Spread retries out so a burst of failures does not return as a new burst.
+  const jitter = Math.floor(Math.random() * 400);
+  return Math.min(15_000, Math.max(base, hinted)) + jitter;
+}
+
+async function callAiTranslationWithRetry(systemPrompt, userContent, options) {
+  let result = await callAiTranslation(systemPrompt, userContent, options);
+  for (
+    let attempt = 0;
+    attempt < TRANSLATION_RETRY_DELAYS_MS.length &&
+    isRetryableTranslationFailure(result);
+    attempt += 1
+  ) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, translationRetryDelay(result, attempt)),
+    );
+    result = await callAiTranslation(systemPrompt, userContent, options);
+  }
+  return result;
 }
 
 // Pure validators are exposed for the repository's Node tests only.
 globalThis.__YTD_TRANSLATION_TESTING__ = {
+  callAiTranslationWithRetry,
+  isRetryableTranslationFailure,
   requestAiCompletion,
   handleListModels,
   callAiTranslation,
@@ -1824,4 +2300,9 @@ globalThis.__YTD_TRANSLATION_TESTING__ = {
   handleTranslateContent,
   closePanelForTab,
   updatePanelForTab,
+  handleAnalyzeTranscript,
+  handleTestConnection,
+  extractCompletedItems,
+  extractStreamedContent,
+  createAnalysisProgressReporter,
 };
