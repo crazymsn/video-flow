@@ -401,6 +401,63 @@ button {
   color: var(--text);
 }
 
+.overview-summary-card {
+  margin-bottom: 24px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.overview-summary-eyebrow {
+  margin-bottom: 7px;
+  color: var(--accent-text);
+  font: 700 11px/1.3 var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.overview-summary-headline {
+  margin-bottom: 9px;
+  color: var(--text);
+  font: 700 20px/1.3 var(--font-display);
+  letter-spacing: -0.25px;
+}
+
+.overview-summary-overview {
+  color: var(--text-secondary);
+  font: 14px/1.7 var(--font-reading);
+}
+
+.overview-summary-takeaways {
+  display: grid;
+  gap: 7px;
+  margin: 15px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-summary-takeaways li {
+  position: relative;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  font: 13px/1.55 var(--font-reading);
+}
+
+.overview-summary-takeaways li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.overview-summary-card.analysis-loading {
+  color: var(--text-muted);
+}
+
 /* ============================================================
    WORTH WATCHING IF — The 3 bullet points
    ============================================================ */
@@ -1639,6 +1696,29 @@ button {
 .note-actions {
   display: flex;
   gap: 8px;
+}
+
+.analysis-retry-btn {
+  margin-top: 10px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--accent-solid);
+  color: var(--on-accent);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-ui);
+}
+
+.analysis-retry-btn:hover {
+  background: var(--accent-hover);
+}
+
+.analysis-retry-btn:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
 }
 
 .note-action-btn {

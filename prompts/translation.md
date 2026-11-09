@@ -1,13 +1,14 @@
 # Translation Prompts
 
-Used in `background.js` when the user requests Simplified Chinese content.
+Used in `background.js` when the user requests Simplified Chinese content, or
+English content for videos whose subtitles are already Chinese.
 
 ## Shared base rules
 
 ```
 TRANSLATION RULES (follow strictly):
 - Match the EXACT tone and register of the original (casual stays casual, formal stays formal)
-- Use natural {langName} sentence structures — NOT English syntax translated word-by-word
+- Use natural {langName} sentence structures — NOT the source language's syntax translated word-by-word
 - Do NOT translate: proper nouns, brand names, technical terms commonly kept in English (API, AI, etc.), timestamps
 - Preserve ALL formatting: paragraph breaks, bullet points, markdown, timestamps
 {langSpecific}
@@ -22,6 +23,17 @@ TRANSLATION RULES (follow strictly):
 - Use 你, never 您, unless the source is explicitly using formal honorific language.
 - Write for a smart tech/product audience. Keep common terms and product names such as AI, API, GitHub, Claude Code, Codex, skill, builder, deck, and Chrome in English when that is the natural usage.
 - Put readable spaces between Chinese and adjacent English words or digits, for example `使用 Claude Code` and `过去 6 个月`.
+- Remove empty spoken fillers rather than translating them literally, while preserving real uncertainty or emphasis.
+```
+
+## English rules
+
+```
+- Use clear, natural, modern English. Avoid stiff or overly literal phrasing.
+- Translate the complete thought before deciding the final English phrasing; never preserve a broken caption fragment just because the source API split there.
+- Keep the speaker's voice: casual stays casual, formal stays formal.
+- Keep common terms and product names such as AI, API, GitHub, Claude Code, Codex, and Chrome as they are.
+- Write Chinese personal names in pinyin without tone marks, family name first, unless the speaker or video title uses an established English spelling.
 - Remove empty spoken fillers rather than translating them literally, while preserving real uncertainty or emphasis.
 ```
 
@@ -64,7 +76,7 @@ The related video is titled "{videoTitle}". Use the title and neighboring segmen
 
 ## Variables
 
-- `{langName}` — "Simplified Chinese".
+- `{langName}` — "Simplified Chinese" or "English".
 - `{baseRules}` — the shared base rules above.
-- `{langSpecific}` — the Chinese rules inserted into the shared base rules.
+- `{langSpecific}` — the Chinese rules or the English rules, inserted into the shared base rules.
 - `{videoTitle}` — video title.

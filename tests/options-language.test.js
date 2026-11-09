@@ -56,6 +56,34 @@ test("Settings copy covers English and Simplified Chinese", () => {
   assert.doesNotMatch(html, /—/);
 });
 
+test("Supadata signup link precedes the Chinese explanation", () => {
+  const html = read("options.html");
+  assert.match(html, /<a\s+href="https:\/\/dash\.supadata\.ai\/auth\/sign-up"[\s\S]*?data-i18n="supadataLink"[\s\S]*?<\/a>\s*<span data-i18n="supadataHelp"/);
+  assert.equal(
+    options.translate("zh-CN", "supadataLink") + options.translate("zh-CN", "supadataHelp"),
+    "创建 Supadata 账号并获取密钥，用于获取带时间戳的 YouTube 字幕，Bilibili 视频不需要此密钥。",
+  );
+});
+
+test("first settings visit defaults to Simplified Chinese", async () => {
+  const storage = {
+    async get() {
+      return {};
+    },
+  };
+
+  assert.equal(await options.readPreferredLanguage(storage), "zh-CN");
+});
+
+test("saved English preference still wins over the Chinese default", async () => {
+  const storage = {
+    async get() {
+      return { [options.LANGUAGE_STORAGE_KEY]: "en" };
+    },
+  };
+
+  assert.equal(await options.readPreferredLanguage(storage), "en");
+});
 test("language preference persists through extension-compatible storage", async () => {
   const storedValues = {};
   const chromeApi = {
@@ -81,6 +109,7 @@ test("language preference persists through extension-compatible storage", async 
   assert.equal(storedValues[options.LANGUAGE_STORAGE_KEY], "zh-CN");
   assert.equal(await options.readPreferredLanguage(storage), "zh-CN");
 });
+
 
 test("non-extension preview safely persists language in localStorage", async () => {
   const localStorage = createLocalStorage();

@@ -7,7 +7,7 @@
  * It handles:
  * 1. Extracting video info (title, channel name) from the page
  * 2. Injecting "key moment" markers onto YouTube's progress bar
- * 3. Adding a "Digest" button to YouTube's action bar (next to Share/Save)
+ * 3. Adding a "Video Flow" button to YouTube's action bar (next to Share/Save)
  *
  * Think of it like a robot sitting inside the YouTube tab,
  * reading the page and making small visual changes.
@@ -174,7 +174,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ============================================================
 
 /**
- * Injects a "Digest" button into YouTube's action bar.
+ * Injects a "Video Flow" button into YouTube's action bar.
  * The button appears next to Share, Save, etc. below the video.
  *
  * When clicked, it opens the Video Flow side panel.
@@ -232,7 +232,7 @@ function createDigestButton() {
   digestButton.id = "ytd-digest-button";
   digestButton.type = "button";
   digestButton.setAttribute("aria-label", "Open Video Flow");
-  digestButton.innerHTML = `<span class="ytd-digest-label">Flow</span>`;
+  digestButton.innerHTML = `<span class="ytd-digest-label">Video Flow</span>`;
 
   // Style the button — rounded pill in our brand accent, sized to sit
   // comfortably among YouTube's native action buttons.
