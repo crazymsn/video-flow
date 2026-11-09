@@ -40,6 +40,7 @@ public_allowlist=(
   "icons/icon16.png"
   "icons/icon48.png"
   "icons/icon128.png"
+  "icons/deepcloud-logo.png"
   "prompts/analysis.md"
   "prompts/explain.md"
   "prompts/note-cleanup.md"

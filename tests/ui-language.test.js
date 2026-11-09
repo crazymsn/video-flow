@@ -11,6 +11,7 @@ test("settings page uses the company name in the top bar", () => {
   const css = read("options.css");
   const js = read("options.js");
 
+  assert.match(html, /class="settings-brand-mark"[^>]*src="icons\/deepcloud-logo\.png"[^>]*alt="DeepCloud"/);
   assert.match(html, /class="eyebrow"[\s\S]*>\s*<span[^>]*>深度云创科技<\/span>/);
   assert.match(js, /填入 API 密钥/);
   assert.match(js, /前往 API 分发站创建密钥<\/a>，填写密钥后会自动获取模型列表/);
@@ -21,7 +22,8 @@ test("settings page uses the company name in the top bar", () => {
   assert.match(css, /\.settings-shell\s*\{[^}]*min-height:\s*100vh;/);
   assert.match(css, /\.settings-shell\s*\{[^}]*padding:\s*48px 32px 0;/);
   assert.match(css, /@media\s*\(max-width:\s*620px\)[\s\S]*\.settings-shell\s*\{\s*padding:\s*28px 16px 0;/);
-  assert.match(css, /\.brand-company\s*\{[^}]*font-size:\s*16px;/);
+  assert.match(css, /\.settings-brand-mark\s*\{[^}]*width:\s*116px;[^}]*height:\s*64px;/);
+  assert.match(css, /\.brand-company\s*\{[^}]*color:\s*#1464c4;[^}]*font-size:\s*16px;/);
   assert.match(css, /\.settings-heading-row\s*\{[^}]*padding-inline:\s*24px;/);
   assert.match(css, /\.form-actions\s*\{[^}]*padding-inline:\s*24px;/);
   assert.match(css, /\.save-btn\s*\{[^}]*min-width:\s*132px;[^}]*height:\s*40px;/);

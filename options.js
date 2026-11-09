@@ -70,7 +70,7 @@ const YTD_OPTIONS = (() => {
       languageGroupLabel: "界面语言",
       transcriptProvider: "字幕服务",
       supadataApiKeyLabel: "Supadata API 密钥",
-      supadataHelp: "用于获取带时间戳的 YouTube 字幕。Bilibili 视频不需要此密钥。",
+      supadataHelp: "用于获取带时间戳的 YouTube 字幕，Bilibili 视频不需要此密钥。",
       supadataLink: "创建 Supadata 账号并获取密钥",
       aiProvider:
         '<a href="https://api.meding.site" target="_blank" rel="noreferrer">填入 API 密钥</a>',
