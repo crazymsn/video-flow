@@ -18,7 +18,8 @@ test("settings page uses the DeepCloud brand lockup", () => {
   assert.doesNotMatch(js, /API 令牌/);
   assert.match(css, /\.settings-shell\s*\{[^}]*width:\s*100%;/);
   assert.match(css, /\.settings-shell\s*\{[^}]*padding:\s*48px 32px 0;/);
-  assert.match(css, /\.settings-brand-mark\s*\{[^}]*width:\s*116px;[^}]*height:\s*64px;/);
+  assert.match(css, /\.settings-brand-mark\s*\{[^}]*width:\s*72px;[^}]*height:\s*64px;[^}]*flex:\s*0 0 72px;/);
+  assert.match(css, /\.help a\[href="https:\/\/dash\.supadata\.ai\/auth\/sign-up"\]\s*\{[^}]*text-decoration:\s*none;/);
   assert.match(css, /\.brand-company\s*\{[^}]*color:\s*var\(--accent-solid\);[^}]*font-size:\s*22px;/);
   assert.match(css, /\.settings-heading-row\s*\{[^}]*padding-inline:\s*24px;/);
   assert.match(css, /\.form-actions\s*\{[^}]*padding-inline:\s*24px;/);

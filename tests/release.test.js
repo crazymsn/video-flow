@@ -109,7 +109,8 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(optionsPage, /class="settings-brand-mark"[^>]*src="icons\/deepcloud-logo\.png"[^>]*alt="DeepCloud"/);
   assert.match(optionsPage, /class="eyebrow"[\s\S]*>\s*<span[^>]*>深度云创科技<\/span>/);
   assert.doesNotMatch(optionsPage, /class="company-credit"|深度云创科技\s*·\s*Video Flow/);
-  assert.match(optionsStyles, /\.brand-company\s*\{[^}]*color:\s*var\(--accent-solid\);[^}]*font-size:\s*22px;/);
+  assert.match(optionsStyles, /\.settings-brand-mark\s*\{[^}]*width:\s*72px;[^}]*height:\s*64px;[^}]*flex:\s*0 0 72px;/);
+  assert.match(optionsStyles, /\.help a\[href="https:\/\/dash\.supadata\.ai\/auth\/sign-up"\]\s*\{[^}]*text-decoration:\s*none;/);
   assert.doesNotMatch(optionsScript, /providerBadge|providerSummaryLabel|privacyNote|footer:/);
   // The top "create an API token" heading is gone. The token site is linked from
   // the AI card title and from the line under the Base URL, without underlines.

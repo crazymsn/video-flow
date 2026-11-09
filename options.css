@@ -196,15 +196,19 @@ header {
 }
 
 .settings-brand-mark {
-  width: 116px;
+  width: 72px;
   height: 64px;
-  flex: 0 0 116px;
+  flex: 0 0 72px;
   object-fit: contain;
   object-position: left center;
 }
 
 .help {
   color: var(--muted);
+}
+
+.help a[href="https://dash.supadata.ai/auth/sign-up"] {
+  text-decoration: none;
 }
 
 /* ---------- Language switch ---------- */
