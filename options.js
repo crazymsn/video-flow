@@ -238,7 +238,10 @@ const YTD_OPTIONS = (() => {
 
   async function readPreferredLanguage(storage) {
     const stored = await storage.get(LANGUAGE_STORAGE_KEY);
-    return normalizeLanguage(stored[LANGUAGE_STORAGE_KEY]);
+    const preferred = stored[LANGUAGE_STORAGE_KEY];
+    return preferred === undefined || preferred === null
+      ? "zh-CN"
+      : normalizeLanguage(preferred);
   }
 
   async function persistPreferredLanguage(storage, language) {

@@ -56,6 +56,25 @@ test("Settings copy covers English and Simplified Chinese", () => {
   assert.doesNotMatch(html, /—/);
 });
 
+test("first settings visit defaults to Simplified Chinese", async () => {
+  const storage = {
+    async get() {
+      return {};
+    },
+  };
+
+  assert.equal(await options.readPreferredLanguage(storage), "zh-CN");
+});
+
+test("saved English preference still wins over the Chinese default", async () => {
+  const storage = {
+    async get() {
+      return { [options.LANGUAGE_STORAGE_KEY]: "en" };
+    },
+  };
+
+  assert.equal(await options.readPreferredLanguage(storage), "en");
+});
 test("language preference persists through extension-compatible storage", async () => {
   const storedValues = {};
   const chromeApi = {
@@ -81,6 +100,7 @@ test("language preference persists through extension-compatible storage", async 
   assert.equal(storedValues[options.LANGUAGE_STORAGE_KEY], "zh-CN");
   assert.equal(await options.readPreferredLanguage(storage), "zh-CN");
 });
+
 
 test("non-extension preview safely persists language in localStorage", async () => {
   const localStorage = createLocalStorage();

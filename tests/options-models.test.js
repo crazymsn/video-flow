@@ -88,7 +88,7 @@ function createDom() {
 async function openSettings({ stored, models }) {
   const { doc, byId } = createDom();
   const sent = [];
-  const storage = { ...stored };
+  const storage = { ytd_options_language: "en", ...stored };
   const timers = [];
   const fakeRoot = {
     document: doc,
