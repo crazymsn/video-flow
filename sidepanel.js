@@ -301,12 +301,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // FOLLOW THE ACTIVE TAB
 // ============================================================
 // The panel watches which tab is in front of it and reacts:
-//   - Front tab is NOT YouTube  -> the panel closes itself (window.close()).
-//     We do this OURSELVES rather than relying only on the background
-//     script's per-tab enable/disable, because Chrome doesn't reliably
-//     apply per-tab panel state to tabs spawned in unusual ways (e.g. a
-//     link opened from another app) — which let the panel linger on
-//     non-YouTube pages.
+//   - Front tab is NOT a supported video page -> the panel does nothing. The
+//     background script disables the panel for that tab and Chrome hides it.
+//     We must NOT call window.close() here: a closed panel cannot be reopened
+//     without a user gesture, so it would never come back when the user
+//     switches back to the video tab. Hiding keeps the loaded video and the
+//     reading position intact for the return trip.
 //   - Front tab IS YouTube but on a different video -> refresh the digest.
 //     YouTube is a single-page app (clicking a video swaps content without
 //     a reload), so we track URL changes; startDigest() caches per video,
@@ -337,15 +337,17 @@ function panelIsShowingResults() {
 }
 
 /**
- * Reacts to the URL now in front of the panel: close on non-YouTube,
- * refresh the digest when the video changed.
+ * Reacts to the URL now in front of the panel: keep the loaded video for a
+ * non-video page (the background hides the panel), refresh the digest when
+ * the video changed.
  */
 function handleFrontTabUrl(url) {
   if (!YTD_SETTINGS.isSupportedPageUrl(url)) {
-    // Start the position save, then close in this same event callback. Chrome
-    // does not reliably honor window.close() after an asynchronous wait.
     void saveCurrentTranscriptViewState();
-    window.close();
+    // Nothing loaded yet (panel opened on a non-video page): show the
+    // welcome screen instead of an empty panel. Otherwise leave the loaded
+    // video untouched so it is still there when the user comes back.
+    if (!currentVideoId) showState("welcome");
     return;
   }
 

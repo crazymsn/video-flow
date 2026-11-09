@@ -298,15 +298,13 @@ test("background reconciles side-panel state after navigation commits", () => {
   );
   assert.match(
     background,
-    /chrome\.tabs\.onUpdated\.addListener\(\(tabId, changeInfo, tab\)[\s\S]*getNavigationUrl\(changeInfo, tab\)[\s\S]*updatePanelForTab\(tabId, url, tab\.windowId\)/,
+    /chrome\.tabs\.onUpdated\.addListener\(\(tabId, changeInfo, tab\)[\s\S]*getNavigationUrl\(changeInfo, tab\)[\s\S]*updatePanelForTab\(tabId, url\)/,
   );
+  // The panel is hidden per tab, never closed, so it can return on switch-back.
+  assert.doesNotMatch(background, /chrome\.sidePanel\.close\(/);
   assert.match(
     background,
-    /function closePanelForTab\(tabId, windowId\)[\s\S]*chrome\.sidePanel\.close\(\{ tabId \}\)[\s\S]*chrome\.sidePanel\.close\(\{ windowId \}\)/,
-  );
-  assert.match(
-    background,
-    /await closePanelForTab\(tabId, windowId\);[\s\S]*setOptions\(\{ tabId, enabled: false \}\)/,
+    /async function updatePanelForTab\(tabId, url\)[\s\S]*setOptions\(\{ tabId, enabled: false \}\)/,
   );
 });
 

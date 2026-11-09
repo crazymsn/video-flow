@@ -138,7 +138,7 @@ function loadBackgroundHelpers({
   return sandbox.__YTD_TRANSLATION_TESTING__;
 }
 
-test("non-YouTube tabs explicitly close before their panel is disabled", async () => {
+test("non-video tabs hide their panel without closing it", async () => {
   const calls = [];
   const background = loadBackgroundHelpers({
     sidePanel: {
@@ -148,33 +148,29 @@ test("non-YouTube tabs explicitly close before their panel is disabled", async (
     },
   });
 
-  await background.updatePanelForTab(17, "https://example.com/page", 4);
+  await background.updatePanelForTab(17, "https://example.com/page");
 
+  // close() would make the panel stay shut when the user returns to the video
+  // tab, because reopening needs a user gesture. Only the tab is disabled.
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
-    ["close", { tabId: 17 }],
     ["setOptions", { tabId: 17, enabled: false }],
   ]);
 });
 
-test("a global panel closes by window when the tab close is rejected", async () => {
+test("video tabs re-enable their panel so it returns on switch-back", async () => {
   const calls = [];
   const background = loadBackgroundHelpers({
     sidePanel: {
       setPanelBehavior() {},
-      close: async (options) => {
-        calls.push(["close", options]);
-        if (options.tabId) throw new Error("Global panel");
-      },
+      close: async (options) => calls.push(["close", options]),
       setOptions: async (options) => calls.push(["setOptions", options]),
     },
   });
 
-  await background.updatePanelForTab(17, "https://example.com/page", 4);
+  await background.updatePanelForTab(17, "https://www.youtube.com/watch?v=abc");
 
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
-    ["close", { tabId: 17 }],
-    ["close", { windowId: 4 }],
-    ["setOptions", { tabId: 17, enabled: false }],
+    ["setOptions", { tabId: 17, path: "sidepanel.html", enabled: true }],
   ]);
 });
 

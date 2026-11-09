@@ -88,9 +88,11 @@ test("Notes opens at its newest item and Transcript keeps its position", () => {
 });
 
 test("the transcript view restores without resuming automatic scrolling", () => {
+  // The position is saved when leaving a video page, but the panel stays open
+  // (hidden by the background) so it can return on switch-back.
   assert.match(
     source,
-    /void saveCurrentTranscriptViewState\(\);\s+window\.close\(\);/,
+    /function handleFrontTabUrl\(url\)[\s\S]*void saveCurrentTranscriptViewState\(\);[\s\S]*if \(!currentVideoId\) showState\("welcome"\);/,
   );
   assert.match(
     source,
@@ -111,6 +113,16 @@ test("the transcript view restores without resuming automatic scrolling", () => 
   assert.match(
     source,
     /tabName !== "transcript" && transcriptTabIsActive\(\)[\s\S]*captureCurrentTranscriptScrollTop\(\)/,
+  );
+});
+
+test("the panel never closes itself on non-video pages", () => {
+  // window.close() cannot be undone without a user gesture, so the panel would
+  // stay shut after switching back to the video tab.
+  assert.doesNotMatch(source, /window\.close\(\)\s*;/);
+  assert.match(
+    source,
+    /function handleFrontTabUrl\(url\)[\s\S]*!YTD_SETTINGS\.isSupportedPageUrl\(url\)[\s\S]*saveCurrentTranscriptViewState\(\)/,
   );
 });
 

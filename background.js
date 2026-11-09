@@ -325,7 +325,7 @@ async function readBoundedAiResponse(response, onActivity) {
  */
 chrome.action.onClicked.addListener((tab) => {
   if (!YTD_SETTINGS.isSupportedPageUrl(tab.url)) {
-    void updatePanelForTab(tab.id, tab.url, tab.windowId);
+    void updatePanelForTab(tab.id, tab.url);
     return;
   }
 
@@ -355,8 +355,11 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
  * you to every tab. To make Video Flow behave like a video-site tool, we
  * enable the panel on YouTube and Bilibili tabs and disable it everywhere
  * else. Disabling
- * on a tab makes Chrome hide/close the panel for that tab, so it never lingers
- * on a new tab or some other website.
+ * on a tab makes Chrome HIDE the panel for that tab, so it never lingers on a
+ * new tab or some other website. We deliberately do not call sidePanel.close():
+ * a closed panel stays closed, and sidePanel.open() needs a real user gesture,
+ * so a tab switch could never bring it back. A hidden panel returns by itself
+ * when the user comes back to a tab where it is enabled.
  *
  * We have to react to BOTH things that can change "what tab you're looking at":
  *   - onUpdated: the current tab navigates to a new URL
@@ -364,30 +367,10 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
  * The original code only handled onUpdated, which is why the panel stayed
  * visible when switching to an already-loaded non-YouTube tab.
  */
-async function closePanelForTab(tabId, windowId) {
-  // Chrome 141 added an explicit close API. On older supported versions,
-  // disabling the tab-specific panel below remains the compatibility path.
-  if (typeof chrome.sidePanel.close !== "function") return;
-
-  try {
-    // This closes the tab-specific panel used by Video Flow.
-    await chrome.sidePanel.close({ tabId });
-    return;
-  } catch (error) {
-    // Chrome 145+ rejects tabId when the visible instance is global. Close
-    // that instance by window instead.
-  }
-
-  if (Number.isInteger(windowId)) {
-    await chrome.sidePanel.close({ windowId }).catch(() => {});
-  }
-}
-
-async function updatePanelForTab(tabId, url, windowId) {
+async function updatePanelForTab(tabId, url) {
   if (!YTD_SETTINGS.isSupportedPageUrl(url)) {
-    // Close the visible instance first. Then disable this tab so Chrome cannot
-    // reopen the global default panel as navigation settles.
-    await closePanelForTab(tabId, windowId);
+    // Disable (hide) the panel for this tab only. The panel's open state for
+    // video tabs is untouched, so it reappears when the user switches back.
     await chrome.sidePanel.setOptions({ tabId, enabled: false }).catch(() => {});
     return;
   }
@@ -417,14 +400,14 @@ function getNavigationUrl(changeInfo, tab) {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   const url = getNavigationUrl(changeInfo, tab);
   if (!url) return; // Ignore title and favicon-only updates.
-  void updatePanelForTab(tabId, url, tab.windowId);
+  void updatePanelForTab(tabId, url);
 });
 
 // The user switched to a different tab (or opened a new one).
-chrome.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const tab = await chrome.tabs.get(tabId);
-    void updatePanelForTab(tabId, tab.url || tab.pendingUrl, windowId);
+    void updatePanelForTab(tabId, tab.url || tab.pendingUrl);
   } catch (e) {
     // Tab vanished before we could read it — nothing to do.
   }
@@ -1822,6 +1805,5 @@ globalThis.__YTD_TRANSLATION_TESTING__ = {
   normalizeTranslatedSegmentBatch,
   handleSaveNote,
   handleTranslateContent,
-  closePanelForTab,
   updatePanelForTab,
 };

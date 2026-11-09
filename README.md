@@ -27,7 +27,7 @@ Video Flow is a bring-your-own-key project installed locally from GitHub. It is 
 - Use one Original, Chinese, or bilingual setting across Transcript, Overview, and Notes. New videos stay in Original by default.
 - Translate visible Overview and Notes content progressively in small cached batches.
 - Explain selected transcript text or save it directly as a timestamped note.
-- Keep your transcript position across navigation, with the panel closing automatically outside supported video pages.
+- Keep your transcript position across navigation. The panel hides outside supported video pages and returns when you switch back to the video tab.
 
 ## Install with your coding agent
 
