@@ -56,6 +56,11 @@ const sse = (content) =>
 test("completed chapters are pulled out of a reply that is still being written", () => {
   const { extractCompletedItems, extractStreamedContent } = loadBackground();
   const full = JSON.stringify({
+    summary: {
+      headline: "Video thesis",
+      overview: "A concise overview.",
+      takeaways: ["One takeaway"],
+    },
     chapters: [
       { title: "Intro, {not a brace}", timestampSeconds: 0, summary: 'He said "hi"' },
       { title: "Two", timestampSeconds: 60, summary: "s" },
@@ -76,6 +81,8 @@ test("completed chapters are pulled out of a reply that is still being written",
   assert.equal(count(firstEnd, "chapters"), 1);
   assert.equal(count(full.length, "chapters"), 2);
   assert.equal(count(full.length, "keyQuotes"), 1);
+  const partialSummary = JSON.stringify({ summary: { headline: "H" } });
+  assert.equal(extractCompletedItems(partialSummary, "missing").length, 0);
 
   // Quotes and braces inside strings do not end an object early.
   const items = extractCompletedItems(full, "chapters");

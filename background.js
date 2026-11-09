@@ -1545,6 +1545,17 @@ function validateAndFixTimestamps(analysis, maxSeconds) {
     return Math.floor(seconds);
   };
 
+  const summary = {
+    headline: safeString(analysis?.summary?.headline, 240),
+    overview: safeString(analysis?.summary?.overview, 1800),
+    takeaways: (Array.isArray(analysis?.summary?.takeaways)
+      ? analysis.summary.takeaways
+      : [])
+      .map((item) => safeString(item, 500))
+      .filter(Boolean)
+      .slice(0, 5),
+  };
+
   const chapters = (Array.isArray(analysis?.chapters) ? analysis.chapters : [])
     .slice(0, 100)
     .map((chapter) => {
@@ -1585,7 +1596,7 @@ function validateAndFixTimestamps(analysis, maxSeconds) {
     .filter((seconds) => seconds !== null)
     .slice(0, 100);
 
-  return { chapters, keyQuotes, keyMoments };
+  return { summary, chapters, keyQuotes, keyMoments };
 }
 
 // ============================================================

@@ -642,6 +642,9 @@ async function startDigest(videoId, videoUrl) {
     currentVideoId = videoId;
     currentVideoUrl = videoUrl;
     currentAnalysis = cached.analysis || null;
+    if (currentAnalysis && analysisNeedsSummary(currentAnalysis)) {
+      currentAnalysis = null;
+    }
     currentTranscript = cached.transcript;
     currentTranscriptText = cached.transcriptText;
     currentTranscriptTimestamped = cached.transcriptTimestamped;
@@ -931,6 +934,17 @@ async function translateInterfaceSegments(surface, segments, rerender) {
 function getOverviewTranslationSegments() {
   if (!currentAnalysis) return [];
   const segments = [];
+  if (currentAnalysis.summary) {
+    if (currentAnalysis.summary.headline) {
+      segments.push({ id: "summary-headline", text: currentAnalysis.summary.headline });
+    }
+    if (currentAnalysis.summary.overview) {
+      segments.push({ id: "summary-overview", text: currentAnalysis.summary.overview });
+    }
+    (currentAnalysis.summary.takeaways || []).forEach((text, index) => {
+      segments.push({ id: `summary-takeaway-${index}`, text });
+    });
+  }
   (currentAnalysis.chapters || []).forEach((chapter, index) => {
     if (chapter.title) {
       segments.push({ id: `chapter-${index}-title`, text: chapter.title });
@@ -980,11 +994,44 @@ function translateNotesContent() {
   });
 }
 
+function renderAnalysisSummary(summary) {
+  const card = document.getElementById("overviewSummary");
+  const headline = document.getElementById("summaryHeadline");
+  const overview = document.getElementById("summaryOverview");
+  const takeaways = document.getElementById("summaryTakeaways");
+  if (!card || !headline || !overview || !takeaways) return;
+  if (!summary && draft) return;
+
+  const safeSummary = summary || {};
+  headline.innerHTML = renderLocalizedContent(
+    safeSummary.headline || "视频总结",
+    "overview",
+    "summary-headline",
+  );
+  overview.innerHTML = renderLocalizedContent(
+    safeSummary.overview || "概览将在分析完成后显示。",
+    "overview",
+    "summary-overview",
+  );
+  takeaways.innerHTML = "";
+  const items = Array.isArray(safeSummary.takeaways) ? safeSummary.takeaways : [];
+  (items.length ? items : ["核心要点将在分析完成后显示"]).forEach((text, index) => {
+    const item = document.createElement("li");
+    item.innerHTML = renderLocalizedContent(text, "overview", `summary-takeaway-${index}`);
+    takeaways.appendChild(item);
+  });
+}
+
+function analysisNeedsSummary(analysis) {
+  return !analysis?.summary?.overview;
+}
+
 /**
  * Renders the analysis results into the Overview tab.
- * Shows chapters and key quotes only.
  */
 function renderAnalysisResults(analysis, { draft = false } = {}) {
+  renderAnalysisSummary(analysis.summary);
+
   // Chapters
   const chapterList = document.getElementById("chapterList");
   chapterList.innerHTML = "";
@@ -1620,8 +1667,20 @@ function buildTimestampedTranscriptFromCache() {
  * on screen even though that request no longer belongs to the current video.
  */
 function resetOverviewPanel() {
+  const summaryHeadline = document.getElementById("summaryHeadline");
+  const summaryOverview = document.getElementById("summaryOverview");
+  const summaryTakeaways = document.getElementById("summaryTakeaways");
   const chapterList = document.getElementById("chapterList");
   const quotesList = document.getElementById("quotesList");
+  const summaryCard = document.getElementById("overviewSummary");
+  if (summaryCard) summaryCard.classList.remove("analysis-loading");
+  if (summaryHeadline) summaryHeadline.textContent = "总结将在这里显示";
+  if (summaryOverview) {
+    summaryOverview.textContent = "打开概览后，AI 会提炼视频的主题、思路和结论。";
+  }
+  if (summaryTakeaways) {
+    summaryTakeaways.innerHTML = "<li>核心要点将在分析完成后显示</li>";
+  }
   if (chapterList) {
     chapterList.innerHTML =
       '<li class="chapter-item" style="color: var(--text-muted); cursor: default; border-color: var(--border);">Chapters will appear here</li>';
@@ -1647,6 +1706,13 @@ function renderAnalysisError(message) {
   const safeMessage = escapeHtml(message || "Unable to load the overview.");
   const chapterList = document.getElementById("chapterList");
   const quotesList = document.getElementById("quotesList");
+  const summaryCard = document.getElementById("overviewSummary");
+  if (summaryCard) {
+    summaryCard.classList.remove("analysis-loading");
+    summaryCard.querySelector("#summaryHeadline").textContent = "概览生成失败";
+    summaryCard.querySelector("#summaryOverview").textContent = message || "请重试。";
+    summaryCard.querySelector("#summaryTakeaways").innerHTML = "";
+  }
   if (chapterList) {
     chapterList.innerHTML = `<li class="chapter-item analysis-error">${safeMessage}</li>`;
   }
@@ -1705,6 +1771,14 @@ async function triggerAnalysis() {
   // Show loading indicators in the Overview tab
   const chapterList = document.getElementById("chapterList");
   const quotesList = document.getElementById("quotesList");
+  const summaryCard = document.getElementById("overviewSummary");
+  if (summaryCard) summaryCard.classList.add("analysis-loading");
+  const summaryHeadline = document.getElementById("summaryHeadline");
+  const summaryOverview = document.getElementById("summaryOverview");
+  const summaryTakeaways = document.getElementById("summaryTakeaways");
+  if (summaryHeadline) summaryHeadline.textContent = "正在生成视频总结…";
+  if (summaryOverview) summaryOverview.textContent = "AI 正在提炼视频的主题、思路和结论。";
+  if (summaryTakeaways) summaryTakeaways.innerHTML = "<li>请稍候，核心要点正在生成</li>";
 
   if (chapterList)
     chapterList.innerHTML =

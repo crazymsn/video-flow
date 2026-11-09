@@ -957,6 +957,11 @@ test("Overview and Notes requests cannot wait on the message channel forever", (
 });
 
 const analysisReply = JSON.stringify({
+  summary: {
+    headline: "A practical guide",
+    overview: "The video explains the main idea and how to apply it.",
+    takeaways: ["Start with the core problem", "Test the idea in practice"],
+  },
   chapters: [{ title: "Intro", timestamp: "0:00", timestampSeconds: 0, summary: "s" }],
   keyQuotes: [{ quote: "q", timestamp: "1:30", timestampSeconds: 90 }],
   keyMoments: [0],
@@ -991,6 +996,10 @@ test("overview analysis streams so a slow model is not cut off as inactive", asy
     "[0:00] hello [1:30] world", "Title", "Channel", "Description", 200,
   );
   assert.equal(result.success, true);
+  assert.equal(result.analysis.summary.headline, "A practical guide");
+  assert.equal(result.analysis.summary.takeaways.length, 2);
+  assert.equal(result.analysis.summary.takeaways[0], "Start with the core problem");
+  assert.equal(result.analysis.summary.takeaways[1], "Test the idea in practice");
   assert.equal(result.analysis.chapters[0].title, "Intro");
   assert.equal(bodies.length, 1);
   assert.equal(bodies[0].stream, true);
