@@ -179,7 +179,7 @@ header {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 9px;
+  gap: 4px;
   color: var(--accent-text);
   font-size: 12px;
   font-weight: 700;
@@ -188,8 +188,8 @@ header {
 }
 
 .brand-company {
-  color: #1464c4;
-  font-size: 20px;
+  color: var(--accent-solid);
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;

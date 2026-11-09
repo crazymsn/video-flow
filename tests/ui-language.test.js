@@ -19,7 +19,7 @@ test("settings page uses the DeepCloud brand lockup", () => {
   assert.match(css, /\.settings-shell\s*\{[^}]*width:\s*100%;/);
   assert.match(css, /\.settings-shell\s*\{[^}]*padding:\s*48px 32px 0;/);
   assert.match(css, /\.settings-brand-mark\s*\{[^}]*width:\s*116px;[^}]*height:\s*64px;/);
-  assert.match(css, /\.brand-company\s*\{[^}]*color:\s*#1464c4;[^}]*font-size:\s*20px;/);
+  assert.match(css, /\.brand-company\s*\{[^}]*color:\s*var\(--accent-solid\);[^}]*font-size:\s*22px;/);
   assert.match(css, /\.settings-heading-row\s*\{[^}]*padding-inline:\s*24px;/);
   assert.match(css, /\.form-actions\s*\{[^}]*padding-inline:\s*24px;/);
   assert.match(css, /\.save-btn\s*\{[^}]*min-width:\s*132px;[^}]*height:\s*40px;/);

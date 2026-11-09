@@ -109,7 +109,7 @@ test("release copy documents current scope without em dashes", () => {
   assert.match(optionsPage, /class="settings-brand-mark"[^>]*src="icons\/deepcloud-logo\.png"[^>]*alt="DeepCloud"/);
   assert.match(optionsPage, /class="eyebrow"[\s\S]*>\s*<span[^>]*>深度云创科技<\/span>/);
   assert.doesNotMatch(optionsPage, /class="company-credit"|深度云创科技\s*·\s*Video Flow/);
-  assert.match(optionsStyles, /\.brand-company\s*\{[^}]*color:\s*#1464c4;[^}]*font-size:\s*20px;/);
+  assert.match(optionsStyles, /\.brand-company\s*\{[^}]*color:\s*var\(--accent-solid\);[^}]*font-size:\s*22px;/);
   assert.doesNotMatch(optionsScript, /providerBadge|providerSummaryLabel|privacyNote|footer:/);
   // The top "create an API token" heading is gone. The token site is linked from
   // the AI card title and from the line under the Base URL, without underlines.
@@ -159,7 +159,7 @@ test("settings page uses the full viewport and shows DeepCloud branding", () => 
   assert.match(html, /深度云创科技/);
   assert.match(css, /\.settings-shell\s*\{[^}]*width:\s*100%;/);
   assert.match(css, /\.settings-shell\s*\{[^}]*padding:\s*48px 32px 0;/);
-  assert.match(css, /\.brand-company\s*\{[^}]*color:\s*#1464c4;[^}]*font-size:\s*20px;/);
+  assert.match(css, /\.brand-company\s*\{[^}]*color:\s*var\(--accent-solid\);[^}]*font-size:\s*22px;/);
   assert.doesNotMatch(css, /\.settings-shell\s*\{[^}]*max-width:/);
 });
 
