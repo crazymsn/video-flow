@@ -24,7 +24,7 @@ test("manifest uses minimized install-time permissions", () => {
     "https://www.youtube.com/*",
   ]);
   assert.equal(Object.hasOwn(manifest, "optional_host_permissions"), false);
-  assert.equal(manifest.version, "1.3.0");
+  assert.equal(manifest.version, "1.3.1");
 
   // Each site gets its own content script, and the Bilibili one stays on
   // video pages only.
@@ -49,7 +49,7 @@ test("release copy documents current scope without em dashes", () => {
   assert.doesNotMatch(manifest.description, /—/);
   assert.doesNotMatch(packageJson.description, /—/);
 
-  assert.equal(manifest.name, "Video Flow");
+  assert.equal(manifest.name, "Video Flow - YouTube、Bilibili 视频笔记");
   assert.equal(packageJson.name, "video-flow");
   assert.match(read("scripts/package-extension.sh"), /video-flow-v\$version\.zip/);
   assert.doesNotMatch(
